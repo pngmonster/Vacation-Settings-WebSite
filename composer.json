@@ -1,0 +1,7 @@
+{
+    "require": {
+        "illuminate/database": "^12.21",
+        "phpoffice/phpspreadsheet": "^5.0",
+        "vlucas/phpdotenv": "^5.6"
+    }
+}

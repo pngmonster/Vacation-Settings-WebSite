@@ -1,0 +1,572 @@
+/* Общие стили */
+:root {
+    --primary-color: #4361ee;
+    --secondary-color: #3f37c9;
+    --accent-color: #4895ef;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+    --success-color: #4cc9f0;
+    --border-radius: 12px;
+    --border-color: #e9ecef;
+    --hover-color: #f1f3f5;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+    --max-content-width: 1200px;
+    --content-padding: 20px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+body {
+    background-color: #f5f7fa;
+    color: var(--dark);
+    font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: var(--content-padding);
+    display: block;
+    flex-direction: column;
+    justify-content: center;
+
+}
+
+.navbar {
+    background-color: var(--light-color);
+    padding: var(--content-padding);
+    box-shadow: var(--box-shadow);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    width: 100%;
+}
+
+.navbar-container {
+    max-width: 600px;
+    margin: 0 auto;
+    gap: var(--content-padding);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.navbar-container a {
+    display: flex;
+    justify-content: center;
+    color: white;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 150px;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    color: var(--dark-color);
+    font-weight: 500;
+    transition: var(--transition);
+    background-color: transparent;
+    margin: 0 auto;
+}
+
+.navbar-container a:hover {
+    background-color: rgba(67, 97, 238, 0.1);
+    color: var(--primary-color);
+}
+
+.navbar-container a.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.navbar-container a i {
+    font-size: 16px;
+}
+
+/* Контейнер админ-панели */
+.admin-container {
+    max-width: var(--max-content-width);
+    margin: 20px auto;
+    padding: var(--content-padding);
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    width: 100%;
+}
+
+h1 {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+/* Форма и элементы управления */
+
+.form-group {
+    margin-top: var(--content-padding);
+}
+
+.dropdown {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    color: var(--dark-color);
+    background-color: white;
+    appearance: none;
+    transition: var(--transition);
+}
+
+.dropdown:focus {
+    border-color: var(--accent-color);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+}
+
+/* Контейнер месяцев */
+.months-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+/* Карточка месяца */
+.month-card {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 15px;
+    box-shadow: var(--box-shadow);
+    border: 1px solid #e9ecef;
+    transition: var(--transition);
+}
+
+.month-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.month-card h3 {
+    color: var(--secondary-color);
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.year-card {
+    max-width: 200 px;
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 15px;
+    box-shadow: var(--box-shadow);
+    border: 1px solid #e9ecef;
+    transition: var(--transition);
+    margin: 0 auto;
+    margin-bottom: 30px;
+}
+
+.year-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.year-card h3 {
+    color: var(--secondary-color);
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.days-input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e9ecef;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    text-align: center;
+    transition: var(--transition);
+}
+
+.days-input:focus {
+    border-color: var(--accent-color);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+}
+
+/* Кнопка сохранения */
+.save-btn {
+    width: 100%;
+    padding: 15px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.save-btn:hover {
+    background-color: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.save-btn:active {
+    transform: translateY(0);
+}
+
+/* ------- */
+/* Отчет */
+/* ------- */
+
+.vacation-container {
+    max-width: var(--max-content-width);
+    margin: 20px auto;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+    padding: var(--content-padding);
+    width: 100%;
+}
+
+.vacation-header {
+    border-radius: var(--border-radius);
+    padding: 15px 20px;
+    background-color: var(--light-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.employees-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.employee-card {
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: 15px 20px;
+    transition: background-color 0.2s ease;
+    margin: 10px auto;
+}
+
+.employee-card:hover {
+    background-color: var(--hover-color);
+}
+
+.employee-card:last-child {
+    border-bottom: none;
+}
+
+.employee-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.employee-position {
+    font-weight: 200;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+/* Опасные элементы (красные) */
+.danger-link {
+    color: white !important;
+    font-weight: bold;
+    background-color: #e63946 !important;
+    border-radius: var(--border-radius);
+    padding: 8px 12px;
+}
+
+.danger-title {
+    color: #e63946;
+    margin-bottom: 20px;
+}
+
+.warning-card {
+    margin-bottom: 20px;
+    background: #fff3f3;
+    border: 1px solid #e63946;
+    color: #e63946;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    line-height: 1.6;
+}
+
+.warning-card ul {
+    margin-left: 20px;
+    margin-top: 10px;
+    line-height: 1.6;
+}
+
+.warning-card p {
+    margin-top: 10px;
+}
+
+/* Сообщения */
+.success-message {
+    color: #4caf50;
+    text-align: center;
+    font-weight: bold;
+}
+
+.error-message {
+    text-align: center;
+    color: black;
+    background-color: white;
+    font-weight: bold;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+/* Форма */
+.confirm-text {
+    text-align: center;
+    margin: 20px auto;
+}
+
+.confirm-input {
+    height: 45px;
+    width: 100%;
+    text-align: center;
+    font-size: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 5px;
+}
+
+.danger-btn {
+    background-color: #e63946 !important;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: #ff6b6b;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 5px 10px;
+    transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+    color: #ff0000;
+    transform: scale(1.1);
+}
+
+.delete-btn:active {
+    transform: scale(0.95);
+}
+
+.vacation-parts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.vacation-part {
+    background-color: var(--light-color);
+    border-radius: var(--border-radius);
+    padding: 12px;
+}
+
+.part-title {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.vacation-dates {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+}
+
+.between {
+    display: flex;
+    justify-content: space-between;
+}
+
+.date-row {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+}
+
+.buttonsCont {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+}
+
+.date-label {
+    color: var(--dark-color);
+    opacity: 0.7;
+}
+
+.date-value {
+    font-weight: 500;
+}
+
+/* ------- */
+/* Поиск сотрудников */
+/* ------- */
+
+.search-form {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 15px auto;
+    background: var(--light-color);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: 6px 10px;
+    transition: var(--transition);
+    height: 60px;
+}
+
+.search-form:focus-within {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(72, 149, 239, 0.2);
+}
+
+.search-form input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 10px 12px;
+    font-size: 1rem;
+    background: transparent;
+    color: var(--dark-color);
+    width: 100%;
+}
+
+.search-form input::placeholder {
+    color: #adb5bd;
+    font-style: italic;
+}
+
+.search-form button {
+    background-color: var(--light-color);
+    border: none;
+    color: black;
+    font-size: 1rem;
+    padding: 8px 14px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-form button:hover {
+    background: var(--secondary-color);
+    transform: translateY(-2px);
+}
+
+.search-form button:active {
+    transform: translateY(0);
+}
+
+/* Адаптация для очень маленьких экранов */
+@media (max-width: 400px) {
+    .year-card {
+        max-width: 100%;
+    }
+
+    .months-container {
+        grid-template-columns: 1fr;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .month-card {
+        padding: 12px;
+    }
+
+    .buttonsCont {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 500px) {
+    .search-form {
+        max-width: 100%;
+    }
+
+    .search-form input {
+        font-size: 0.9rem;
+    }
+
+    .search-form button {
+        padding: 6px 10px;
+    }
+}
+
+@media (max-width: 600px) {
+    .navbar-container {
+        grid-template-columns: 1fr;
+    }
+
+    .navbar-container a {
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+}
+
+
+@media (max-width: 768px) {
+    .vacation-parts {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .employee-name {
+        font-size: 1rem;
+    }
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
