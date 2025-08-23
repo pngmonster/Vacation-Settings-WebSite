@@ -92,20 +92,28 @@
                     }
                 
                     // 1. Проверяем, были ли уже отправлены заголовки
-        if (headers_sent()) {
-            die("<script>window.location.href='http://localhost:8001/user.php?id={$employee->id}';</script>");
-        }
-        
-        // 2. Убедимся, что нет вывода перед перенаправлением
-        ob_clean();
-        
-        // 3. Используем абсолютный URL с проверкой
-        $redirectUrl = "http://localhost:8001/user.php?id=" . urlencode($employee->id);
-        header("Location: " . $redirectUrl);
-        
-        // 4. Добавляем дополнительный JavaScript редирект на случай проблем
-        echo "<script>window.location.href='{$redirectUrl}';</script>";
-        exit();
+                    // Получаем текущий домен динамически
+                    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+                    $domain = $_SERVER['HTTP_HOST'];
+                    $baseUrl = $protocol . $domain;
+
+                    // 1. Проверяем, были ли уже отправлены заголовки
+                    if (headers_sent()) {
+                        $redirectUrl = $baseUrl . "/user.php?id=" . urlencode($employee->id);
+                        die("<script>window.location.href='{$redirectUrl}';</script>");
+                    }
+
+                    // 2. Очищаем буфер вывода
+                    ob_clean();
+
+                    // 3. Используем абсолютный URL с динамическим определением домена
+                    $redirectUrl = $baseUrl . "/user.php?id=" . urlencode($employee->id);
+                    header("Location: " . $redirectUrl);
+                    exit(); // Всегда вызывайте exit после header Location
+
+                    // 4. Добавляем дополнительный JavaScript редирект
+                    echo "<script>window.location.href='{$redirectUrl}';</script>";
+                    exit();
 
                 }
                 
