@@ -121,7 +121,7 @@
 
                     if ($fio === 0)
                     {
-                        echo '<div class="answ">Не верно указанно ФИО</div>';
+                        echo '<div class="answ">Неверно указанно ФИО</div>';
                     }
                     elseif ($position === 0)
                     {
