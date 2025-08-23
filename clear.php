@@ -73,5 +73,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 
+    <script>
+        // Сохраняем позицию прокрутки перед обновлением страницы
+        window.addEventListener('beforeunload', function() {
+            localStorage.setItem('scrollPosition', window.scrollY);
+        });
+
+        // Восстанавливаем позицию после загрузки страницы
+        window.addEventListener('load', function() {
+            const savedPosition = localStorage.getItem('scrollPosition');
+            if (savedPosition) {
+                window.scrollTo(0, savedPosition);
+                localStorage.removeItem('scrollPosition');
+            }
+            
+            // Дополнительно: плавная прокрутка
+            setTimeout(() => {
+                window.scrollTo({
+                    top: savedPosition,
+                    behavior: 'smooth'
+                });
+            }, 100);
+        });
+    </script>
+
 </body>
 </html>
