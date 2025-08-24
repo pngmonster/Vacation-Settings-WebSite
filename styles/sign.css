@@ -128,7 +128,30 @@ body {
     transform: translateY(0);
 }
 
-@media (max-width: 480px) {
+.form-checkbox {
+    margin-bottom: -10px;
+    display: block;
+    justify-content: center;
+}
+
+.simple-checkbox {
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: normal;
+    font-size: 0.9rem;
+}
+
+.simple-checkbox input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    transform: scale(1.2);
+}
+
+
+@media (max-width: 450px) {
     .login-container {
         margin: 20px;
         max-width: calc(100% - 40px);

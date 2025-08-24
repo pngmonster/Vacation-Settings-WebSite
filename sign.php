@@ -39,7 +39,7 @@
                     <input type="text" name="fullname" class="form-control" placeholder="Введите ваше ФИО" required>
                 </div>
 
-                <?php $positions = \Models\Position::all("position")->toArray(); //Получаем все должности из БД ?>
+                <?php $positions = \Models\Position::orderBy('position', 'asc')->get(['position'])->toArray(); //Получаем все должности из БД ?>
 
                 <div class="form-group">
                     <label for="position">Должность</label>
@@ -54,6 +54,13 @@
                         <?php endforeach; ?>
 
                     </select>
+                </div>
+
+                <div class="form-checkbox">
+                    <label class="simple-checkbox">
+                        <input type="checkbox" name="agreement" required>
+                        Согласен на обработку персональных данных
+                    </label>
                 </div>
 
                 <button type="submit" class="btn">

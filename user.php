@@ -117,11 +117,13 @@
                             {
                                 $hid1 = 'style="display: none;"';
                                 $succ = "success";
+                                $dis1 = "disabled";
                             }
                             else
                             {
                                 $hid1 = "";
                                 $succ = "";
+                                $dis1 = "";
                             }
                         ?>
                         <div class="vacation-section <?php echo $succ ?>">
@@ -131,7 +133,7 @@
                                 <div class="date-row">
                                     <div class="form-group">
                                         <label for="part1-month">Месяц</label>
-                                        <select id="part1-month" name="part1-month">
+                                        <select id="part1-month" name="part1-month" <?php echo $dis1 ?>>
                                             <option value="<?php echo $monthsToStr[$employee->mon1] ?? ''?>" disabled selected>
                                                 <?php echo $monthsToLongStr[$employee->mon1] ?? 'Выберите месяц'?>
                                             </option>
@@ -151,8 +153,8 @@
                                     </div>
                     
                                     <div class="form-group">
-                                        <label for="part1-day">День</label>
-                                        <select id="part1-day" name="part1-day">
+                                        <label for="part1-day">Число</label>
+                                        <select id="part1-day" name="part1-day" <?php echo $dis1 ?>>
                                             <option value="<?php echo $employee->day1 ?? ''?>" disabled selected>
                                                 <?php echo $employee->day1 ?? ''?>
                                             </option>
@@ -175,7 +177,7 @@
                                         
                                 <div class="form-group">
                                     <label for="part1-days">Количество дней отпуска</label>
-                                        <select id="part1-days" name="part1-days">
+                                        <select id="part1-days" name="part1-days" <?php echo $dis1 ?>>
                                             <option value="<?php echo $employee->lenght1 ?? ''?>" disabled selected>
                                                 <?php echo $employee->lenght1 ?? ''?>
                                             </option>
@@ -353,11 +355,13 @@
                             {
                                 $hid2 = 'style="display: none;"';
                                 $succ2 = "success";
+                                $dis2 = "disabled";
                             }
                             else
                             {
                                 $hid2 = "";
                                 $succ2 = "";
+                                $dis3 = "";
                             }
                         ?>
 
@@ -368,7 +372,7 @@
                                 <div class="date-row">
                                     <div class="form-group">
                                         <label for="part2-month">Месяц</label>
-                                        <select id="part2-month" name="part2-month">
+                                        <select id="part2-month" name="part2-month" <?php echo $dis2 ?>>
                                             <option value="<?php echo $monthsToStr[$employee->mon2] ?? ''?>" disabled selected>
                                                 <?php echo $monthsToLongStr[$employee->mon2] ?? 'Выберите месяц'?>
                                             </option>
@@ -388,8 +392,8 @@
                                     </div>
 
                                     <div class="form-group">
-                                        <label for="part2-day">День</label>
-                                        <select id="part2-day" name="part2-day">
+                                        <label for="part2-day">Число</label>
+                                        <select id="part2-day" name="part2-day" <?php echo $dis2 ?>>
                                             <option value="<?php echo $employee->day2 ?? ''?>" disabled selected>
                                                 <?php echo $employee->day2 ?? ''?>
                                             </option>
@@ -412,14 +416,14 @@
                                         
                                 <div class="form-group">
                                     <label for="part2-days">Количество дней отпуска</label>
-                                        <select id="part2-days" name="part2-days">
+                                        <select id="part2-days" name="part2-days" <?php echo $dis2 ?>>
                                             <option value="<?php echo $employee->lenght2 ?? ''?>" disabled selected>
                                                 <?php echo $employee->lenght2 ?? ''?>
                                             </option>
                                         
                                             <?php
 
-                                            for($i = $minPartDay; $i <= $maxPartDay; $i++)
+                                            for($i = 1; $i <= $maxPartDay; $i++)
                                             {
                                                 ?><option value="<?php echo $i?>"><?php echo $i?></option><?php
                                             }
@@ -474,7 +478,7 @@
                                             $thisAvalibleDays = $position->{$conMon2['this']} - $position->{$conMon2['thisEmp']};
                                             $nextAvalibleDays = $position->{$conMon2['next']} - $position->{$conMon2['nextEmp']};
                                         
-                                            if($lenght2 >= $minPartDay && $lenght2 <= $maxPartDay)
+                                            if($lenght2 >= 1 && $lenght2 <= $maxPartDay)
                                             {
                                                 $dateArr2 = dateCalc($day2, $month2, $year, $lenght2);
                                             
@@ -583,280 +587,355 @@
                                                     });
                                                 </script>                   
 
-                    </div>
-                    <?php //Зеленый фон блока
-                        if ($employee->lenght3 != 0)
-                        {
-                            $hid3 = 'style="display: none;"';
-                            $succ3 = "success";
-                        }
-                        else
-                        {
-                            $hid3 = "";
-                            $succ3 = "";
-                        }
-                    ?>
-                                                
-                    <div class="vacation-section <?php echo $succ3 ?>">
-                        <h2 class="section-title">Часть 3 отпуска</h2>
-                                                
-                        <form method="POST">
-                            <div class="date-row">
-                                <div class="form-group">
-                                    <label for="part3-month">Месяц</label>
-                                    <select id="part3-month" name="part3-month">
-                                        <option value="<?php echo $monthsToStr[$employee->mon3] ?? ''?>" disabled selected>
-                                            <?php echo $monthsToLongStr[$employee->mon3] ?? 'Выберите месяц'?>
-                                        </option>
-                                        <option value="jan">Январь</option>
-                                        <option value="feb">Февраль</option>
-                                        <option value="mar">Март</option>
-                                        <option value="apr">Апрель</option>
-                                        <option value="may">Май</option>
-                                        <option value="jun">Июнь</option>
-                                        <option value="jul">Июль</option>
-                                        <option value="aug">Август</option>
-                                        <option value="sep">Сентябрь</option>
-                                        <option value="oct">Октябрь</option>
-                                        <option value="nov">Ноябрь</option>
-                                        <option value="dec">Декабрь</option>
-                                    </select>
+                        </div>
+                        <?php //Зеленый фон блока
+                            if ($employee->lenght3 != 0)
+                            {
+                                $hid3 = 'style="display: none;"';
+                                $succ3 = "success";
+                                $dis3 = "disabled";
+                            }
+                            else
+                            {
+                                $hid3 = "";
+                                $succ3 = "";
+                                $dis3 = "";
+                            }
+                        ?>
+
+                        <div class="vacation-section <?php echo $succ3 ?>">
+                            <h2 class="section-title">Часть 3 отпуска (опционально)</h2>
+
+                            <form method="POST">
+                                <div class="date-row">
+                                    <div class="form-group">
+                                        <label for="part3-month">Месяц</label>
+                                        <select id="part3-month" name="part3-month" <?php echo $dis3 ?>>
+                                            <option value="<?php echo $monthsToStr[$employee->mon3] ?? ''?>" disabled selected>
+                                                <?php echo $monthsToLongStr[$employee->mon3] ?? 'Выберите месяц'?>
+                                            </option>
+                                            <option value="jan">Январь</option>
+                                            <option value="feb">Февраль</option>
+                                            <option value="mar">Март</option>
+                                            <option value="apr">Апрель</option>
+                                            <option value="may">Май</option>
+                                            <option value="jun">Июнь</option>
+                                            <option value="jul">Июль</option>
+                                            <option value="aug">Август</option>
+                                            <option value="sep">Сентябрь</option>
+                                            <option value="oct">Октябрь</option>
+                                            <option value="nov">Ноябрь</option>
+                                            <option value="dec">Декабрь</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="part3-day">Число</label>
+                                        <select id="part3-day" name="part3-day" <?php echo $dis3 ?>>
+                                            <option value="<?php echo $employee->day3 ?? ''?>" disabled selected>
+                                                <?php echo $employee->day3 ?? ''?>
+                                            </option>
+
+                                            <?php
+
+                                            for($i = 1; $i <= 20; $i++)
+                                            {
+                                                ?><option value="<?php echo $i?>"><?php echo $i?></option><?php
+                                            }
+
+                                            ?>
+
+                                        </select>
+                                    </div>
+                                        
                                 </div>
-                                                
+                                        
+                                <div id="result3" class="availableDays">-</div>
+                                        
                                 <div class="form-group">
-                                    <label for="part3-day">День</label>
-                                    <select id="part3-day" name="part3-day">
-                                        <option value="<?php echo $employee->day3 ?? ''?>" disabled selected>
-                                            <?php echo $employee->day3 ?? ''?>
-                                        </option>
-                                                
-                                        <?php
+                                    <label for="part3-days">Количество дней отпуска</label>
+                                        <select id="part3-days" name="part3-days" <?php echo $dis3 ?>>
+                                            <option value="<?php echo $employee->lenght3 ?? ''?>" disabled selected>
+                                                <?php echo $employee->lenght3 ?? ''?>
+                                            </option>
+                                        
+                                            <?php
 
-                                        for($i = 1; $i <= 20; $i++)
-                                        {
-                                            ?><option value="<?php echo $i?>"><?php echo $i?></option><?php
-                                        }
+                                            for($i = 1; $i <= $maxPartDay; $i++)
+                                            {
+                                                ?><option value="<?php echo $i?>"><?php echo $i?></option><?php
+                                            }
 
-                                        ?>
+                                            ?>
 
-                                    </select>
+                                        </select>
                                 </div>
-                                    
-                            </div>
-                                    
-                            <div id="result3" class="availableDays">-</div>
-                                    
-                            <div class="form-group">
-                                <label for="part3-days">Количество дней отпуска</label>
-                                    <select id="part3-days" name="part3-days">
-                                        <option value="<?php echo $employee->lenght3 ?? ''?>" disabled selected>
-                                            <?php echo $employee->lenght3 ?? ''?>
-                                        </option>
-                                    
-                                        <?php
+                                        
+                                <div class="date-row">
+                                        
+                                <button type="submit" class="apply-btn" <?php echo $hid3?>>Применить</button>
+                                        
+                            </form>
+                                        
+                            <form method="POST" action="">
+                                <input type="hidden" name="cancel3" value="1">
+                                <button type="submit" class="apply-btn" onclick="return confirm('Вы уверены, что хотите сбросить 3 часть отпуска?')">
+                                    Сбросить
+                                </button>
+                            </form>
+                                        
+                                </div>
+                                        
+                            <div class="answ-container">
+                                        
+                                <?php
 
-                                        for($i = $minPartDay; $i <= $maxPartDay; $i++)
-                                        {
-                                            ?><option value="<?php echo $i?>"><?php echo $i?></option><?php
-                                        }
-
-                                        ?>
-
-                                    </select>
-                            </div>
-                                    
-                            <div class="date-row">
-                                    
-                            <button type="submit" class="apply-btn" <?php echo $hid3?>>Применить</button>
-                                    
-                        </form>
-                                    
-                        <form method="POST" action="">
-                            <input type="hidden" name="cancel3" value="1">
-                            <button type="submit" class="apply-btn" onclick="return confirm('Вы уверены, что хотите сбросить 3 часть отпуска?')">
-                                Сбросить
-                            </button>
-                        </form>
-                                    
-                            </div>
-                                    
-                        <div class="answ-container">
-                                    
-                            <?php
-
-                                if($_POST['cancel3'])
-                                {
-                                    minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
-                                
-                                    $employee->update([
-                                        'mon3' => 0,
-                                        'lenght3' => 0,
-                                        'day3' => 0
-                                        ]);
-                                    
-                                    echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
-                                    exit;
-                                }
-                                elseif($_POST['part3-month'] && $_POST['part3-day'] && $_POST['part3-days'])
-                                {
-                                    if($year)
+                                    if($_POST['cancel3'])
                                     {
-                                        $day3 = $_POST['part3-day'];
-                                        $month3 = $_POST['part3-month'];
-                                        $lenght3 = $_POST['part3-days'];
+                                        minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
                                     
-                                        $conMon3 = convertMonth($monthsToInt[$_POST['part3-month']]);
-                                    
-                                        $thisAvalibleDays = $position->{$conMon3['this']} - $position->{$conMon3['thisEmp']};
-                                        $nextAvalibleDays = $position->{$conMon3['next']} - $position->{$conMon3['nextEmp']};
-                                    
-                                        if($lenght3 >= $minPartDay && $lenght3 <= $maxPartDay)
+                                        $employee->update([
+                                            'mon3' => 0,
+                                            'lenght3' => 0,
+                                            'day3' => 0
+                                            ]);
+                                        
+                                        echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
+                                        exit;
+                                    }
+                                    elseif($_POST['part3-month'] && $_POST['part3-day'] && $_POST['part3-days'])
+                                    {
+                                        if($year)
                                         {
-                                            $dateArr3 = dateCalc($day3, $month3, $year, $lenght3);
+                                            $day3 = $_POST['part3-day'];
+                                            $month3 = $_POST['part3-month'];
+                                            $lenght3 = $_POST['part3-days'];
                                         
-                                            $isCurOk = false;
-                                            $isNextOk = false;
+                                            $conMon3 = convertMonth($monthsToInt[$_POST['part3-month']]);
                                         
-                                            if($thisAvalibleDays - $dateArr3[0]['this'] >= 0)
+                                            $thisAvalibleDays = $position->{$conMon3['this']} - $position->{$conMon3['thisEmp']};
+                                            $nextAvalibleDays = $position->{$conMon3['next']} - $position->{$conMon3['nextEmp']};
+                                        
+                                            if($lenght3 >= 1 && $lenght3 <= $maxPartDay)
                                             {
-                                                $isCurOk = true;
-                                            }
-                                            else
-                                            {
-                                                echo '<div class="answ">Не хватает в этом месяце</div>';
+                                                $dateArr3 = dateCalc($day3, $month3, $year, $lenght3);
+                                            
                                                 $isCurOk = false;
-                                            }
-                                            if($nextAvalibleDays - $dateArr3[0]['next'] >= 0)
-                                            {
-                                                $isNextOk = true;
-                                            }
-                                            else
-                                            {
-                                                echo '<div class="answ">Не хватает в след месяце</div>';
                                                 $isNextOk = false;
-                                            }
-                                        
-                                            if($isCurOk && $isNextOk)
-                                            {   
                                             
-                                                if($lenght3 + $employee->lenght1 + $employee->lenght2 <= $maxday)
+                                                if($thisAvalibleDays - $dateArr3[0]['this'] >= 0)
                                                 {
-                                                    $mon3 = $dateArr3['start']->format('n'); //Месяц без ведущего нуля
-                                                
-                                                    if($employee->lenght3 != 0)
-                                                    {
-                                                        minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
-                                                    }
-                                                
-                                                    $employee->update([
-                                                        'mon3' => $mon3,
-                                                        'lenght3' => $lenght3,
-                                                        'day3' => $day3
-                                                        ]);
-                                                    
-                                                    plusLen($employee->position, $day3, $mon3, $year, $lenght3);
-                                                    
-                                                    echo "Данные успешно обновлены!";
-                                                    
-                                                    echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
-                                                    exit;
+                                                    $isCurOk = true;
                                                 }
-                                            
                                                 else
                                                 {
-                                                    echo '<div class="answ">Количество всех дней отпуска не должно привышать максимальное значение</div>';
+                                                    echo '<div class="answ">Не хватает в этом месяце</div>';
+                                                    $isCurOk = false;
+                                                }
+                                                if($nextAvalibleDays - $dateArr3[0]['next'] >= 0)
+                                                {
+                                                    $isNextOk = true;
+                                                }
+                                                else
+                                                {
+                                                    echo '<div class="answ">Не хватает в след месяце</div>';
+                                                    $isNextOk = false;
                                                 }
                                             
+                                                if($isCurOk && $isNextOk)
+                                                {   
+                                                
+                                                    if($lenght3 + $employee->lenght1 + $employee->lenght2 <= $maxday)
+                                                    {
+                                                        $mon3 = $dateArr3['start']->format('n'); //Месяц без ведущего нуля
+                                                    
+                                                        if($employee->lenght3 != 0)
+                                                        {
+                                                            minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
+                                                        }
+                                                    
+                                                        $employee->update([
+                                                            'mon3' => $mon3,
+                                                            'lenght3' => $lenght3,
+                                                            'day3' => $day3
+                                                            ]);
+                                                        
+                                                        plusLen($employee->position, $day3, $mon3, $year, $lenght3);
+                                                        
+                                                        echo "Данные успешно обновлены!";
+                                                        
+                                                        echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
+                                                        exit;
+                                                    }
+                                                
+                                                    else
+                                                    {
+                                                        echo '<div class="answ">Количество всех дней отпуска не должно привышать максимальное значение</div>';
+                                                    }
+                                                
+                                                }
                                             }
+                                        
+                                            else
+                                            {
+                                                echo '<div class="answ">Запрещенная длина отпуска</div>';
+                                            }
+                                        
                                         }
                                     
                                         else
                                         {
-                                            echo '<div class="answ">За запрещенная длина отпуска</div>';
+                                            echo '<div class="answ">Год не найден</div>';
                                         }
-                                    
                                     }
                                 
-                                    else
-                                    {
-                                        echo '<div class="answ">Год не найден</div>';
+                                
+                                ?>
+
+                            </div>
+                                
+                            <script>
+                                //Подсчет доступных дней
+                                const positionData3 = JSON.parse('<?= json_encode($position->toArray()) ?>');
+                                
+                                document.getElementById('part3-month').addEventListener('change', function() {
+                                    const month3 = this.value;
+                                    const monthsOrder3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
+                                                        'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                                
+                                    const currentIndex3 = monthsOrder3.indexOf(month3);
+                                    let nextAvailable3 = 0;
+                                
+                                    // Расчет доступных дней для текущего месяца
+                                    const currentAvailable3 = (positionData3[month3] || 0) - (positionData3[month3+'Emp'] || 0);
+                                
+                                    // Если выбран не декабрь - считаем для следующего месяца
+                                    if (month3 !== 'dec') {
+                                        const nextMonth3 = monthsOrder3[(currentIndex3 + 1) % 12];
+                                        nextAvailable3 = (positionData3[nextMonth3] || 0) - (positionData3[nextMonth3+'Emp'] || 0);
                                     }
-                                }
-                            
-                            
-                            ?>
+                                
+                                    // Формируем сообщение с учетом условия
+                                    let message3 = `Доступно ${currentAvailable3} дней в этом месяце`;
+                                    if (month3 !== 'dec') {
+                                        message3 += ` и ${nextAvailable3} в следующем`;
+                                    }
+                                
+                                    document.getElementById('result3').innerHTML = message3;
+                                });
+                            </script>
 
                         </div>
-                            
-                        <script>
-                            //Подсчет доступных дней
-                            const positionData3 = JSON.parse('<?= json_encode($position->toArray()) ?>');
-                            
-                            document.getElementById('part3-month').addEventListener('change', function() {
-                                const month3 = this.value;
-                                const monthsOrder3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
-                                                    'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-                            
-                                const currentIndex3 = monthsOrder3.indexOf(month3);
-                                let nextAvailable3 = 0;
-                            
-                                // Расчет доступных дней для текущего месяца
-                                const currentAvailable3 = (positionData3[month3] || 0) - (positionData3[month3+'Emp'] || 0);
-                            
-                                // Если выбран не декабрь - считаем для следующего месяца
-                                if (month3 !== 'dec') {
-                                    const nextMonth3 = monthsOrder3[(currentIndex3 + 1) % 12];
-                                    nextAvailable3 = (positionData3[nextMonth3] || 0) - (positionData3[nextMonth3+'Emp'] || 0);
-                                }
-                            
-                                // Формируем сообщение с учетом условия
-                                let message3 = `Доступно ${currentAvailable3} дней в этом месяце`;
-                                if (month3 !== 'dec') {
-                                    message3 += ` и ${nextAvailable3} в следующем`;
-                                }
-                            
-                                document.getElementById('result3').innerHTML = message3;
-                            });
-                        </script>                   
 
                     </div>
 
-                    </div>
-
-                    <button type="button" class="save-btn" onclick="confirmSave()">Сохранить изменения</button>
-
-                    <script>
-                        function confirmSave() {
-                            if (confirm("После нажатия на эту кнопку, данные сохранятся и их больше нельзя будет изменить. Продолжить?")) {
-                                // Получаем ID из URL
-                                const urlParams = new URLSearchParams(window.location.search);
-                                const id = urlParams.get('id');
-                                
-                                // Отправляем данные на сервер
-                                const form = document.createElement('form');
-                                form.method = 'POST';
-                                form.action = 'confirmUser.php';
-                                
-                                // Добавляем скрытое поле для подтверждения
-                                const confirmInput = document.createElement('input');
-                                confirmInput.type = 'hidden';
-                                confirmInput.name = 'confirm_save';
-                                confirmInput.value = '1';
-                                form.appendChild(confirmInput);
-                                
-                                // Добавляем скрытое поле с ID
-                                const idInput = document.createElement('input');
-                                idInput.type = 'hidden';
-                                idInput.name = 'id';
-                                idInput.value = id;
-                                form.appendChild(idInput);
-                                
-                                // Добавляем форму на страницу и отправляем
-                                document.body.appendChild(form);
-                                form.submit();
-                            }
+                    <?php //Зеленый фон блока
+                        if (isset($employee->comment))
+                        {
+                            $hid4 = 'style="display: none;"';
+                            $succ4 = "success";
+                            $dis4 = "disabled";
                         }
-                    </script>
+                        else
+                        {
+                            $hid4 = "";
+                            $succ4 = "";
+                            $dis4 = "";
+                        }
+                    ?>
+
+                    <div class="vacation-section <?php echo $succ4 ?>">
+                            <h2 class="section-title">Дополнительный комментарий</h2>
+
+                            <form method="POST">                       
+                                        
+                                <div class="form-group">
+                                    <label for="comment" class="dopcom">Здесь вы можете оставить дополнитеьный комментарий (Не обязательно для заполнения)</label>
+                                        <input class="comment" name="comment" <?php echo $dis4 ?> placeholder="Например ребенок идет в 1 класс" value="<?php echo $employee->comment ?? ''; ?>">
+                                </div>
+                                        
+                                <div class="date-row">
+                                        
+                                <button type="submit" class="apply-btn" <?php echo $hid4?>>Применить</button>
+                                        
+                            </form>
+                                        
+                            <form method="POST" action="">
+                                <input type="hidden" name="cancel4" value="1">
+                                <button type="submit" class="apply-btn" onclick="return confirm('Вы уверены, что хотите сбросить комментарий?')">
+                                    Сбросить
+                                </button>
+                            </form>
+                                        
+                                </div>
+                                        
+                            <div class="answ-container">
+                                        
+                                <?php
+
+                                    if($_POST['cancel4'])
+                                    {
+                                        minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
+                                    
+                                        $employee->update([
+                                            'comment' => null
+                                            ]);
+                                        
+                                        echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
+                                        exit;
+                                    }
+                                    elseif($_POST['comment'])
+                                    {
+                                        $com = $_POST['comment'];
+
+                                        $employee->update([
+                                            'comment' => $com
+                                            ]);
+
+                                        echo "Данные успешно обновлены!";
+                                                        
+                                        echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
+                                        exit;
+                                    }
+                                ?>
+
+                            </div>
+                        </div>
+
+                <button type="button" class="save-btn" onclick="confirmSave()">Сохранить изменения</button>
+
+                <script>
+                    function confirmSave() {
+                        if (confirm("После нажатия на эту кнопку, данные сохранятся и их больше нельзя будет изменить. Продолжить?")) {
+                            // Получаем ID из URL
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const id = urlParams.get('id');
+                            
+                            // Отправляем данные на сервер
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = 'confirmUser.php';
+                            
+                            // Добавляем скрытое поле для подтверждения
+                            const confirmInput = document.createElement('input');
+                            confirmInput.type = 'hidden';
+                            confirmInput.name = 'confirm_save';
+                            confirmInput.value = '1';
+                            form.appendChild(confirmInput);
+                            
+                            // Добавляем скрытое поле с ID
+                            const idInput = document.createElement('input');
+                            idInput.type = 'hidden';
+                            idInput.name = 'id';
+                            idInput.value = id;
+                            form.appendChild(idInput);
+                            
+                            // Добавляем форму на страницу и отправляем
+                            document.body.appendChild(form);
+                            form.submit();
+                        }
+                    }
+                </script>
 
                 <?php
                 }

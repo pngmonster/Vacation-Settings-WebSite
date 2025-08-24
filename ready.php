@@ -202,7 +202,18 @@
                                 }
                             ?>
                         </div>
+
                     </div>
+
+                    <div class="vacation-part com">
+                        <?php $com = $employee->comment;?>
+
+                        <div class="part-title">Комментарий</div>
+                        <div class="vacation-dates">
+                            <span class="date-value"><?php echo $com  ?? "Нет комментария"?></span>
+                        </div>
+                    </div>
+                    
                 </li>
         </ul>
 

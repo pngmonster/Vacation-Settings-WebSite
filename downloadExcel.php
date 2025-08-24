@@ -23,7 +23,7 @@ $sheet = $spreadsheet->getActiveSheet();
 
 // 3. Заполняем данными (пример)
 
-$sheet->getStyle('A1:K1')->applyFromArray([
+$sheet->getStyle('A1:L1')->applyFromArray([
     'font' => ['bold' => true],
 
     'alignment' => [
@@ -89,6 +89,10 @@ $sheet->setCellValue('J2', 'Конец');
 $sheet->getColumnDimension('K')->setWidth(12); 
 $sheet->setCellValue('K2', 'Дительность');
 
+$sheet->setCellValue('L1', 'Доп. Информация');
+$sheet->getColumnDimension('L')->setWidth(20); 
+$sheet->setCellValue('L2', 'Комментарий');
+
 $i = 2;
 $data = [];
 
@@ -109,6 +113,8 @@ foreach ($employees as $employee):
     $len3 = $employee->lenght3;
     $dateArr3 = dateCalc($day3, $mon3, $year, $len3);
 
+    $com = $employee->comment;
+
     $data[] = [
         $employee->position, 
         upfl($employee->fam) . ' ' . upfl($employee->name) . ' ' . upfl($employee->otch),
@@ -121,6 +127,7 @@ foreach ($employees as $employee):
         $len3 === 0 ? '-' : $dateArr3['start']->format('d.m.Y'),
         $len3 === 0 ? '-' : $dateArr3['end']->format('d.m.Y'),
         $len3 === 0 ? '-' : $len3,
+        $com === null ? 'Нет комментария' : $com
     ];
 endforeach;
 
@@ -137,10 +144,11 @@ foreach ($data as $item) {
     $sheet->setCellValue('I' . $row, $item[8]);
     $sheet->setCellValue('J' . $row, $item[9]);
     $sheet->setCellValue('K' . $row, $item[10]);
+    $sheet->setCellValue('L' . $row, $item[11]);
     $row++;
 }
 
-$sheet->getStyle('A2:K' . $i)->applyFromArray([
+$sheet->getStyle('A2:L' . $i)->applyFromArray([
     'borders' => [
         'allBorders' => [
             'borderStyle' => Border::BORDER_THIN,
