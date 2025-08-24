@@ -37,6 +37,7 @@ select {
     background-position: right 10px center;
     background-size: 10px 5px;
     padding-right: 30px;
+    color: black;
     /* чтобы стрелка не налезала на текст */
 }
 
