@@ -27,6 +27,19 @@ body {
     color: var(--dark-color);
 }
 
+select {
+    -webkit-appearance: none;
+    /* Убирает нативный стиль iOS */
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"><polygon points="0,0 10,0 5,5" fill="%23777"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 10px 5px;
+    padding-right: 30px;
+    /* чтобы стрелка не налезала на текст */
+}
+
 .login-container {
     width: 100%;
     max-width: 400px;
