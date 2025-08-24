@@ -109,7 +109,7 @@
                 {
                     ?><h1> Здравствуйте, <?php echo $name ?>!</h1>
 
-                    <div class="posth1">Здесь в можете заполнить свои пожелания на отпуск в <?php echo $year ?> году</div>
+                    <div class="posth1">Здесь вы можете заполнить свои пожелания на отпуск в <?php echo $year ?> году</div>
                     
                     <div class="vacation-sections">
                         <?php //Зеленый фон блока
