@@ -83,6 +83,75 @@
             }
         ?>
 
+        <div id="myModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">Доступные дни отпуска</h2>
+                    <p class="modal-subtitle">Количество свободных дней на каждый месяц для вашей должности. Эти значения зависят от выбора других сотрудников</p>
+                </div>
+                
+                <?php
+                $months = [
+                    'Январь' => $position->jan - $position->janEmp,
+                    'Февраль' => $position->feb - $position->febEmp,
+                    'Март' => $position->mar - $position->marEmp,
+                    'Апрель' => $position->apr - $position->aprEmp,
+                    'Май' => $position->may - $position->mayEmp,
+                    'Июнь' => $position->jun - $position->junEmp,
+                    'Июль' => $position->jul - $position->julEmp,
+                    'Август' => $position->aug - $position->augEmp,
+                    'Сентябрь' => $position->sep - $position->sepEmp,
+                    'Октябрь' => $position->oct - $position->octEmp,
+                    'Ноябрь' => $position->nov - $position->novEmp,
+                    'Декабрь' => $position->dec - $position->decEmp
+                ];
+                ?>
+                
+                <div class="month-list">
+                    <?php foreach ($months as $month => $days): ?>
+                        <div class="month-row">
+                            <span class="month-name"><?= $month ?></span>
+                            <span class="days-available"><?= $days ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                
+                <button class="close-btn" onclick="closeModal()">Закрыть</button>
+            </div>
+        </div>
+
+        <script>
+            function openModal() {
+                const modal = document.getElementById("myModal");
+                modal.style.display = "block";
+                setTimeout(() => {
+                    modal.classList.add("active");
+                }, 10);
+            }
+            
+            function closeModal() {
+                const modal = document.getElementById("myModal");
+                modal.classList.remove("active");
+                setTimeout(() => {
+                    modal.style.display = "none";
+                }, 300);
+            }
+            
+            window.onclick = function(event) {
+                const modal = document.getElementById("myModal");
+                if (event.target === modal) {
+                    closeModal();
+                }
+            }
+            
+            document.addEventListener('keydown', function(event) {
+                const modal = document.getElementById("myModal");
+                if (event.key === "Escape" && modal.style.display === "block") {
+                    closeModal();
+                }
+            });
+        </script>
+
             <div class="vacation-days">
                 <?php //Количество доступных дней отпуска
                     if ($maxday)
@@ -109,7 +178,13 @@
                 {
                     ?><h1> Здравствуйте, <?php echo $name ?>!</h1>
 
+
                     <div class="posth1">Здесь вы можете заполнить свои пожелания на отпуск в <?php echo $year ?> году</div>
+
+                    <button class="avalivleAll" onclick="openModal()" title="Показать доступные дни">
+                        <i class="fas fa-calendar-alt"></i>
+                    </button>
+                    
                     
                     <div class="vacation-sections">
                         <?php //Зеленый фон блока
