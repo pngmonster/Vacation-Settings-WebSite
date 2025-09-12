@@ -83,7 +83,7 @@
 
     <div class="admin-container">
         <form method="POST">
-            <h1>Настройка дней отпуска</h1>
+            <h1>Настройка дней отпуска!</h1>
             
             <div class="year-card">
                 <h3>Год</h3>
