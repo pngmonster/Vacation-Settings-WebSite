@@ -34,9 +34,23 @@
         <div class="login-body">
 
             <form method="POST">
+
+                <?php $fio = \Models\Cur_emp::orderBy('fio', 'asc')->get(['fio'])->toArray();//Получаем все ФИО из БД ?>
+
                 <div class="form-group">
                     <label for="fullname">ФИО полностью</label>
-                    <input type="text" name="fullname" class="form-control" placeholder="Введите ваше ФИО" required>
+                    <!-- <input type="text" name="fullname" class="form-control" placeholder="Введите ваше ФИО" required> -->
+
+                    <select name="fullname" class="form-control dropdown" required> <!--Отображение Фамилий-->
+                       <option value="" disabled selected>Выберите ваше ФИО</option>
+
+                        <?php foreach ($fio as $row): ?>
+                        <option value="<?= htmlspecialchars($row['fio']) ?>">
+                            <?= htmlspecialchars($row['fio']) ?>
+                        </option>
+                        <?php endforeach; ?>
+
+                    </select>
                 </div>
 
                 <?php $positions = \Models\Position::orderBy('position', 'asc')->get(['position'])->toArray(); //Получаем все должности из БД ?>
