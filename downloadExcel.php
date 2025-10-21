@@ -12,9 +12,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 // 1. Очистка буфера
 ob_end_clean();
 
-$employees = \Models\Employees::where('isReady', true)
-               ->orderBy('position', 'asc')  // Сначала сортировка по должности
-               ->orderBy('fam', 'asc')       // Затем по фамилии
+$employees = \Models\Employees::orderBy('isReady', 'desc')  // Сначала все готовые
+               ->orderBy('position', 'asc')->orderBy('fam', 'asc') // Затем по должности, затем по фамилии
                ->get();
 
 // 2. Создаем Excel-документ

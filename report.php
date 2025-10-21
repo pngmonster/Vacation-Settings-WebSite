@@ -95,14 +95,12 @@
         {
             $curPos = $_GET['position'];
 
-            // базовый запрос
+            // Загружаем сотрудников
             if ($curPos === 'all') {
-                $employees = \Models\Employees::where('isReady', true)
-                                ->orderBy('position', 'asc')
+                $employees = \Models\Employees::orderBy('position', 'asc')
                                 ->orderBy('fam', 'asc');
             } else {
-                $employees = \Models\Employees::where('isReady', true)
-                                ->where('position', $curPos)
+                $employees = \Models\Employees::where('position', $curPos)
                                 ->orderBy('fam', 'asc');
             }
 
