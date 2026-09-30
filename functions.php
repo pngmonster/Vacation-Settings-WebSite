@@ -63,7 +63,24 @@ function clearPositionsEmpData() {
 }
 
 function deleteAllEmployees() {
-    \Models\Employees::truncate();
+    // DELETE, а не TRUNCATE: TRUNCATE в PostgreSQL через Laravel сбрасывает нумерацию id, и старые
+    // открытые страницы (user.php?id=N) стали бы указывать на ДРУГИХ сотрудников
+    \Models\Employees::query()->delete();
+}
+
+//Полная очистка («Очистить БД») одной транзакцией. Запись в employees блокируется на время очистки
+//(порядок блокировок тот же, что в остальном коде: сначала employees, затем positions), поэтому
+//работающие в этот момент сотрудники не испортят счётчики: их запросы либо завершатся до очистки,
+//либо увидят пустую БД.
+function clearAllData()
+{
+    $conn = \Illuminate\Database\Capsule\Manager::connection();
+    $conn->transaction(function () use ($conn) {
+        $conn->statement('LOCK TABLE employees IN EXCLUSIVE MODE');
+        deleteAllEmployees();
+        clearPositionsData();
+        clearPositionsEmpData();
+    }, 3);
 }
 
 //Разделение строки на массив (Фамилия, Имя, Отчество)
@@ -279,28 +296,36 @@ function displayFio($employee)
     return implode(' ', $parts);
 }
 
-//Находит сотрудника по записи списка (cur_emp) или создаёт, если он ещё не заходил
+//Находит сотрудника по записи списка (cur_emp) или создаёт, если он ещё не заходил.
+//«Найти или создать» выполняется под консультативной блокировкой PostgreSQL по ключу человека:
+//два одновременных входа (двойной клик, два устройства) не создадут две записи. Блокировка
+//действует до конца транзакции (в том числе внешней) и работает даже без уникального индекса.
 function findOrCreateEmployee($curEmp)
 {
     list($fam, $name, $otch) = splitFio($curEmp->fio);
+    $conn = \Illuminate\Database\Capsule\Manager::connection();
 
-    $employee = \Models\Employees::where([
-        ['fam', '=', $fam],
-        ['name', '=', $name],
-        ['otch', '=', $otch],
-        ['position', '=', $curEmp->position],
-    ])->first();
+    return $conn->transaction(function () use ($conn, $curEmp, $fam, $name, $otch) {
+        $conn->select('SELECT pg_advisory_xact_lock(hashtext(?))', [$fam . '|' . $name . '|' . $otch . '|' . $curEmp->position]);
 
-    if (!$employee) {
-        return \Models\Employees::create([
-            'fam' => $fam, 'name' => $name, 'otch' => $otch,
-            'position' => $curEmp->position, 'fio' => $curEmp->fio,
-        ]);
-    }
-    if (empty($employee->fio)) { // запись создана до появления колонки fio
-        $employee->update(['fio' => $curEmp->fio]);
-    }
-    return $employee;
+        $employee = \Models\Employees::where([
+            ['fam', '=', $fam],
+            ['name', '=', $name],
+            ['otch', '=', $otch],
+            ['position', '=', $curEmp->position],
+        ])->first();
+
+        if (!$employee) {
+            return \Models\Employees::create([
+                'fam' => $fam, 'name' => $name, 'otch' => $otch,
+                'position' => $curEmp->position, 'fio' => $curEmp->fio,
+            ]);
+        }
+        if (empty($employee->fio)) { // запись создана до появления колонки fio
+            $employee->update(['fio' => $curEmp->fio]);
+        }
+        return $employee;
+    }, 3);
 }
 
 //Максимальная длина одной части отпуска по maxday (правило из прежнего кода user.php)
@@ -634,7 +659,10 @@ function readSpreadsheetRows($path)
 //Полностью заменяет список сотрудников (cur_emp) в одной транзакции. Возвращает число записей.
 function replaceEmployeeList(array $rows)
 {
-    \Illuminate\Database\Capsule\Manager::connection()->transaction(function () use ($rows) {
+    $conn = \Illuminate\Database\Capsule\Manager::connection();
+    $conn->transaction(function () use ($conn, $rows) {
+        // две одновременные загрузки выполняются по очереди (читающие страницы не блокируются)
+        $conn->statement('LOCK TABLE cur_emp IN EXCLUSIVE MODE');
         \Models\Cur_emp::query()->delete();
         foreach (array_chunk($rows, 200) as $chunk) {
             \Models\Cur_emp::insert(array_map(function ($r) {
@@ -685,6 +713,9 @@ function adminSavePart($curEmp, $n, $start, $len, $year)
         function () use ($curEmp, $n, $date, $len, $year) {
             $employee = findOrCreateEmployee($curEmp);
             $employee = \Models\Employees::where('id', $employee->id)->lockForUpdate()->first();
+            if (!$employee) { // между созданием и блокировкой запись успел удалить другой администратор
+                return partFail('Сотрудник не найден (возможно, его только что удалили). Повторите действие');
+            }
             \Models\Position::where('position', $employee->position)->lockForUpdate()->first();
 
             // Если здесь была часть, выбранная самим сотрудником, её дни были учтены в счётчиках - возвращаем
@@ -903,5 +934,27 @@ function syncAdminConfirmation($employee)
     if ((bool)$employee->isReady !== $ready) {
         $employee->update(['isReady' => $ready]);
     }
+}
+
+//Подтверждение отпуска сотрудником («Сохранить»). Проверка суммы дней и запись isReady выполняются
+//в одной транзакции под блокировкой сотрудника: параллельный сброс части не даст подтвердить
+//отпуск, в котором дней уже меньше maxday.
+//Возвращает 'ok' | 'short' (дней не равно maxday) | 'notfound'.
+function confirmEmployee($id)
+{
+    return \Illuminate\Database\Capsule\Manager::connection()->transaction(function () use ($id) {
+        $employee = \Models\Employees::where('id', $id)->lockForUpdate()->first();
+        if (!$employee) {
+            return 'notfound';
+        }
+        $maxday = \Models\Position::where('position', $employee->position)->value('maxday');
+        if ($maxday === null || chosenDays($employee) !== (int)$maxday) {
+            return 'short';
+        }
+        if (!$employee->isReady) {
+            $employee->update(['isReady' => true]);
+        }
+        return 'ok';
+    }, 3);
 }
 ?>

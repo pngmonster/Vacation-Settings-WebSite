@@ -310,6 +310,19 @@ check('карточка: «Заполнено» / «42 из 42 дн. · подт
 $st = vacationStatus(emp(40, 2, 0, true), 5);
 check('карточка: выбрано больше максимума -> «42 дн. (максимум по должности — 5) · подтверждено»', $st['detail'] === '42 дн. (максимум по должности — 5) · подтверждено', $st['detail']);
 
+// ---------- Подтверждение сотрудником ----------
+echo "Подтверждение сотрудником:\n";
+$cq = \Models\Cur_emp::create(['fio' => 'Подтвердов Тест Тестович', 'position' => $pos]);
+$eq = findOrCreateEmployee($cq);
+check('confirmEmployee: без дней -> short', confirmEmployee($eq->id) === 'short');
+savePart($eq->id, 1, 'jan', 2, 14, $y);
+check('confirmEmployee: 14 из 28 -> short, не подтверждён', confirmEmployee($eq->id) === 'short' && !\Models\Employees::find($eq->id)->isReady);
+savePart($eq->id, 2, 'mar', 2, 14, $y);
+check('confirmEmployee: 28 из 28 -> ok, подтверждён', confirmEmployee($eq->id) === 'ok' && \Models\Employees::find($eq->id)->isReady == true);
+check('confirmEmployee: повторно -> ok (идемпотентно)', confirmEmployee($eq->id) === 'ok');
+check('confirmEmployee: несуществующий -> notfound', confirmEmployee(999999999) === 'notfound');
+check('findOrCreateEmployee: повторный вызов возвращает ту же запись', findOrCreateEmployee($cq)->id === $eq->id && \Models\Employees::where('fam', 'подтвердов')->count() === 1);
+
 DB::connection()->rollBack();
 
 echo "\n" . ($failed ? "ПРОВАЛЕНО: $failed из $total\n" : "Все проверки пройдены ($total)\n");

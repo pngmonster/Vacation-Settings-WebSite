@@ -3,15 +3,14 @@
     if(($_POST['confirm_save'] ?? '') === "1" && validId($_POST['id'] ?? ''))
     {
         $id = validId($_POST['id']);
-        $employee = \Models\Employees::find($id);
-        if(!$employee)
+        $result = confirmEmployee($id); // проверка суммы и запись - в одной транзакции под блокировкой
+        if($result === 'notfound')
         {
             header('Location: sign.php');
             exit;
         }
-        if(($employee->lenght1 + $employee->lenght2 + $employee->lenght3) === $employee->position()->first()->maxday)
+        if($result === 'ok')
         {
-            $employee->update(['isReady'=>TRUE]);
             header("Location: ready.php?id=" . urlencode($id));
             exit;
         }

@@ -75,10 +75,9 @@ CREATE TABLE IF NOT EXISTS employees (
 );
 CREATE INDEX IF NOT EXISTS employees_position_idx ON employees (position);
 
--- Необязательно (в коде sign.php запись ищется по ФИО+должности через first(),
--- то есть дубликаты не предполагаются). Раскомментируйте, если хотите, чтобы
--- БД сама гарантировала уникальность:
--- CREATE UNIQUE INDEX IF NOT EXISTS employees_person_uniq ON employees (fam, name, otch, position);
+-- Один человек (ФИО + должность) - одна запись. Приложение и так создаёт запись под блокировкой
+-- (findOrCreateEmployee), индекс - последний рубеж защиты от дублей на уровне БД.
+CREATE UNIQUE INDEX IF NOT EXISTS employees_person_uniq ON employees (fam, name, otch, position);
 
 -- Список сотрудников (ФИО + должность). Загружается администратором из Excel и
 -- ПОЛНОСТЬЮ заменяется при каждой загрузке. Должность - всегда из таблицы positions.

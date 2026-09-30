@@ -7,9 +7,7 @@ $message = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $confirm = trim($_POST['confirm'] ?? '');
     if ($confirm === 'Удалить') {
-        clearPositionsData();
-        clearPositionsEmpData();
-        deleteAllEmployees();
+        clearAllData(); // одной транзакцией с блокировкой: безопасно даже при работающих сотрудниках
 
         $message = '<div class="success-message">Все данные успешно удалены!</div>';
     } else {
