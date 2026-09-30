@@ -201,6 +201,115 @@ check('0 дней -> отказ', !adminSavePart($ca, 1, "$y-05-01", 0, $y)['ok'
 check('367 дней -> отказ', !adminSavePart($ca, 1, "$y-05-01", 367, $y)['ok']);
 check('часть 4 -> отказ', !adminSavePart($ca, 4, "$y-05-01", 5, $y)['ok']);
 
+// ---------- Контроль заполнения ----------
+echo "Контроль заполнения:\n";
+function emp($l1, $l2, $l3, $ready) { return (object)['lenght1' => $l1, 'lenght2' => $l2, 'lenght3' => $l3, 'isReady' => $ready]; }
+
+$st = vacationStatus(emp(14, 0, 0, false), 42);
+check('14 из 42, не подтверждён -> не заполнено, обе причины', !$st['complete'] && count($st['reasons']) === 2 && $st['started'], json_encode($st, JSON_UNESCAPED_UNICODE));
+$st = vacationStatus(emp(21, 21, 0, false), 42);
+check('все 42 дня выбраны, но не нажал «Сохранить» -> не заполнено (только «не подтверждён»)', !$st['complete'] && $st['reasons'] === ['не подтверждён'], json_encode($st, JSON_UNESCAPED_UNICODE));
+$st = vacationStatus(emp(21, 21, 0, true), 42);
+check('42 из 42 и подтверждён -> заполнено', $st['complete'] && $st['label'] === 'Заполнено');
+$st = vacationStatus(emp(21, 14, 0, true), 42);
+check('подтверждён, но дней 35 из 42 (после правки админом/maxday) -> не заполнено', !$st['complete'] && $st['reasons'] === ['выбрано 35 из 42 дн.'], json_encode($st, JSON_UNESCAPED_UNICODE));
+$st = vacationStatus(emp(30, 30, 20, true), 42);
+check('админ поставил 80 из 42 (больше maxday) и подтверждён -> заполнено (меньше - нет)', $st['complete']);
+$st = vacationStatus(emp(0, 0, 0, false), 42);
+check('ничего не выбрано -> не заполнено и НЕ начал', !$st['complete'] && !$st['started']);
+$st = vacationStatus(emp(10, 0, 0, false), 0);
+check('неизвестный maxday (0): причиной остаётся только «не подтверждён»', $st['reasons'] === ['не подтверждён']);
+check('fioMatches: подстрока, регистр и ё/е не важны', fioMatches('Фёдоров Пётр Семёнович', 'ФЕДОРОВ пет') && fioMatches('Иванов Иван', '') && !fioMatches('Иванов Иван', 'сидоров'));
+
+// Группы «не приступили» / «не до конца» (в тестовой должности)
+echo "Группы контроля:\n";
+$g1 = \Models\Cur_emp::create(['fio' => 'Группов Первый Никогда', 'position' => $pos]);       // в списке, записи нет
+$g2 = \Models\Cur_emp::create(['fio' => 'Группов Второй Зашёл', 'position' => $pos]);        // запись есть, дней нет
+$g3 = \Models\Cur_emp::create(['fio' => 'Группов Третий Начал', 'position' => $pos]);        // выбрано 14 из 28
+$g4 = \Models\Cur_emp::create(['fio' => 'Группов Четвёртый Готов', 'position' => $pos]);     // 28 из 28 подтверждён
+$g5 = \Models\Cur_emp::create(['fio' => 'Группов Пятый Админ', 'position' => $pos]);         // введён админом 10 дней, не подтверждён
+$g6 = \Models\Cur_emp::create(['fio' => 'Группов Шестой Неподтв', 'position' => $pos]);      // 28 из 28, не подтвердил
+findOrCreateEmployee($g2);
+$e3 = findOrCreateEmployee($g3); $e3->update(['lenght1' => 14, 'mon1' => 1, 'day1' => 5]);
+$e4 = findOrCreateEmployee($g4); $e4->update(['lenght1' => 14, 'lenght2' => 14, 'mon1' => 1, 'day1' => 2, 'mon2' => 5, 'day2' => 2, 'isReady' => true]);
+adminSavePart($g5, 1, "$y-06-10", 10, $y);
+$e6 = findOrCreateEmployee($g6); $e6->update(['lenght1' => 14, 'lenght2' => 14, 'mon1' => 2, 'day1' => 2, 'mon2' => 6, 'day2' => 2]);
+
+$sets = controlSets();
+$ns = array_map(function ($r) { return $r['fio']; }, array_filter($sets['notStarted'], function ($r) use ($pos) { return $r['position'] === $pos && strpos($r['fio'], 'Группов') === 0; }));
+$ic = array_map('displayFio', array_filter($sets['incomplete'], function ($e) use ($pos) { return $e->position === $pos && strpos($e->fam, 'группов') === 0; }));
+sort($ns); sort($ic);
+check('«Не приступили»: не заходил + зашёл, но ничего не выбрал', $ns === ['Группов Второй Зашёл', 'Группов Первый Никогда'], json_encode($ns, JSON_UNESCAPED_UNICODE));
+check('«Не до конца»: начал (14/28), админский (10/28, не подтверждён), 28/28 без подтверждения', $ic === ['Группов Пятый Админ', 'Группов Третий Начал', 'Группов Шестой Неподтв'], json_encode($ic, JSON_UNESCAPED_UNICODE));
+check('полностью заполненный (28/28, подтверждён) нигде не числится', !in_array('Группов Четвёртый Готов', array_merge($ns, $ic)));
+check('группы не пересекаются', count(array_intersect($ns, $ic)) === 0);
+
+// ---------- Автоподтверждение при вводе администратором ----------
+echo "Автоподтверждение админом:\n";
+$ready = function ($cur) { return (bool)findEmployeeForCur($cur)->isReady; };
+$mk = function ($fio) use ($pos) { return \Models\Cur_emp::create(['fio' => $fio, 'position' => $pos]); }; // maxday тестовой должности = 28
+
+$c1 = $mk('Автов Меньше Нормы');
+adminSavePart($c1, 1, "$y-02-02", 27, $y);
+check('админ: 27 дней при maxday 28 -> НЕ подтверждён (не заполнено)', !$ready($c1) && !vacationStatus(findEmployeeForCur($c1), 28)['complete']);
+
+adminSavePart($c1, 2, "$y-06-02", 1, $y);
+check('добавил 1 день -> ровно 28 из 28 -> подтверждён автоматически', $ready($c1) && vacationStatus(findEmployeeForCur($c1), 28)['complete']);
+
+adminResetPart(findEmployeeForCur($c1)->id, 2, $y);
+check('сбросил часть -> 27 из 28 -> подтверждение снимается', !$ready($c1));
+
+adminSavePart($c1, 3, "$y-09-02", 100, $y);
+check('ещё 100 дней (больше maxday) -> подтверждён', $ready($c1));
+
+$c2 = $mk('Автов Свои Части');
+$e2 = findOrCreateEmployee($c2);
+savePart($e2->id, 1, 'jan', 2, 14, $y);                       // сотрудник сам: 14 дней, не подтверждает
+check('у сотрудника только свои части -> без подтверждения', !$ready($c2));
+adminSavePart($c2, 2, "$y-07-02", 14, $y);                    // админ добавляет 14 -> суммарно 28
+check('свои 14 + админские 14 = 28 из 28 -> подтверждён автоматически', $ready($c2));
+$e2 = findEmployeeForCur($c2);
+adminResetPart($e2->id, 2, $y);                               // админских частей не осталось
+check('после сброса админской части осталось 14 из 28 -> подтверждение снято, сотрудник может дозаполнить сам', $ready($c2) === false);
+check('и действительно может: savePart проходит', savePart($e2->id, 2, 'jul', 2, 14, $y)['ok']);
+
+$c3 = $mk('Автов Свои Без Админа');
+$e3 = findOrCreateEmployee($c3);
+savePart($e3->id, 1, 'jan', 2, 14, $y); savePart($e3->id, 2, 'may', 2, 14, $y);   // 28 из 28 своих, не нажал «Сохранить»
+check('свои 28 из 28 без «Сохранить» и без админа -> не подтверждён', !$ready($c3));
+adminSavePart($c3, 3, "$y-11-02", 5, $y);
+check('админ добавил 5 -> 33 >= 28 -> подтверждён автоматически', $ready($c3));
+adminResetPart($e3->id, 3, $y);
+check('админ сбросил свою часть: своих 28 достаточно -> подтверждение не снимается', $ready($c3));
+
+$c6 = $mk('Автов Ошибочный Ввод');
+adminSavePart($c6, 1, "$y-03-02", 30, $y);
+check('админ ввёл 30 (>= 28) -> подтверждён', $ready($c6));
+adminResetPart(findEmployeeForCur($c6)->id, 1, $y);
+check('ошибочный ввод сброшен -> 0 из 28: подтверждение снято (сотрудник не заблокирован)', !$ready($c6));
+check('сотрудник снова может выбирать дни сам', savePart(findEmployeeForCur($c6)->id, 1, 'jan', 2, 14, $y)['ok']);
+
+$c4 = $mk('Автов Подтверждённый');
+$e4 = findOrCreateEmployee($c4);
+savePart($e4->id, 1, 'jan', 2, 14, $y); savePart($e4->id, 2, 'may', 2, 14, $y);
+$e4->update(['isReady' => true]);
+adminSavePart($c4, 3, "$y-11-02", 5, $y);
+check('уже подтверждённый сотрудник + админская часть сверх maxday -> остаётся подтверждённым', $ready($c4));
+adminResetPart($e4->id, 3, $y);
+check('сброс его админской части: 28 из 28 - подтверждение не снимается', $ready($c4));
+$pos5 = findEmployeeForCur($c4);
+adminSavePart($c4, 3, "$y-11-02", 5, $y);
+adminResetPart($pos5->id, 1, $y);   // сбрасываем собственную часть 1 (14 дн.): остаётся 14+5=19 < 28
+check('после сброса части суммарно 19 из 28 -> подтверждение снято (есть админская часть)', !$ready($c4));
+
+// статус для карточки: заголовок и подробности
+$st = vacationStatus(emp(18, 0, 0, false), 20);
+check('карточка: заголовок «Не заполнено», подробности «Выбрано 18 из 20 дн. · не подтверждён»', $st['title'] === 'Не заполнено' && $st['detail'] === 'Выбрано 18 из 20 дн. · не подтверждён', $st['detail']);
+$st = vacationStatus(emp(21, 21, 0, true), 42);
+check('карточка: «Заполнено» / «42 из 42 дн. · подтверждено»', $st['title'] === 'Заполнено' && $st['detail'] === '42 из 42 дн. · подтверждено', $st['detail']);
+$st = vacationStatus(emp(40, 2, 0, true), 5);
+check('карточка: выбрано больше максимума -> «42 дн. (максимум по должности — 5) · подтверждено»', $st['detail'] === '42 дн. (максимум по должности — 5) · подтверждено', $st['detail']);
+
 DB::connection()->rollBack();
 
 echo "\n" . ($failed ? "ПРОВАЛЕНО: $failed из $total\n" : "Все проверки пройдены ($total)\n");

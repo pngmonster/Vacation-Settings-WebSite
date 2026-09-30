@@ -698,6 +698,7 @@ function adminSavePart($curEmp, $n, $start, $len, $year)
                 "lenght$n" => $len,
                 "admin$n"  => true,
             ]);
+            syncAdminConfirmation($employee);
 
             return ['ok' => true, 'errors' => [], 'employeeId' => $employee->id];
         },
@@ -729,6 +730,7 @@ function adminResetPart($employeeId, $n, $year)
                 "lenght$n" => 0,
                 "admin$n"  => false,
             ]);
+            syncAdminConfirmation($employee);
 
             return ['ok' => true, 'errors' => []];
         },
@@ -771,5 +773,135 @@ function validId($value)
 {
     $value = (string)$value;
     return (ctype_digit($value) && strlen($value) <= 18) ? $value : null;
+}
+
+// =====================================================================
+// Контроль заполнения
+// Единое правило для сайта, Excel и окна админа. Отпуск считается НЕ заполненным до конца,
+// если выбрано меньше дней, чем maxday должности, ИЛИ отпуск не подтверждён сотрудником
+// (не нажато «Сохранить»). Правило одинаково и для частей, введённых администратором.
+// =====================================================================
+
+//Сколько всего дней выбрано (все три части, включая введённые администратором)
+function chosenDays($employee)
+{
+    return (int)$employee->lenght1 + (int)$employee->lenght2 + (int)$employee->lenght3;
+}
+
+//Статус заполнения: ['chosen', 'maxday', 'started', 'complete', 'reasons', 'label']
+function vacationStatus($employee, $maxday)
+{
+    $chosen = chosenDays($employee);
+    $maxday = (int)$maxday;
+    $reasons = [];
+
+    if ($chosen < $maxday) {
+        $reasons[] = "выбрано $chosen из $maxday дн.";
+    }
+    if (!$employee->isReady) {
+        $reasons[] = 'не подтверждён';
+    }
+
+    if ($reasons) {
+        $title = 'Не заполнено';
+        $detail = upfl(implode(' · ', $reasons));
+    } else {
+        $title = 'Заполнено';
+        $detail = ($chosen === $maxday ? "$chosen из $maxday дн." : "$chosen дн. (максимум по должности — $maxday)") . ' · подтверждено';
+    }
+
+    return [
+        'chosen'   => $chosen,
+        'maxday'   => $maxday,
+        'started'  => $chosen > 0,
+        'complete' => !$reasons,
+        'reasons'  => $reasons,
+        'title'    => $title,    // короткий заголовок для карточки
+        'detail'   => $detail,   // подробности второй строкой
+        'label'    => $reasons ? 'Не заполнено: ' . implode(', ', $reasons) : 'Заполнено', // для Excel
+    ];
+}
+
+//Подходит ли ФИО под поисковый запрос (подстрока, без учёта регистра и ё/е)
+function fioMatches($fio, $search)
+{
+    $search = positionKey($search);
+    return $search === '' || mb_strpos(positionKey($fio), $search) !== false;
+}
+
+/**
+ * Две группы для контроля (страница «Отчёт»):
+ *  - notStarted: «Не приступили к заполнению» - сотрудник из списка, у которого нет записи
+ *    (ни разу не заходил) или в записи не выбрано ни одного дня;
+ *  - incomplete: «Заполнили не до конца» - выбрана хотя бы одна часть, но отпуск не заполнен
+ *    до конца (см. vacationStatus).
+ * Группы не пересекаются.
+ * Возвращает ['notStarted' => [['fio','position','employee'|null]], 'incomplete' => [Employees...]].
+ */
+function controlSets()
+{
+    $maxdays = \Models\Position::pluck('maxday', 'position')->all();
+    $employees = \Models\Employees::orderBy('position', 'asc')->orderBy('fam', 'asc')->get();
+
+    $byKey = [];
+    foreach ($employees as $e) {
+        $byKey[$e->fam . '|' . $e->name . '|' . $e->otch . '|' . $e->position] = $e;
+    }
+
+    $notStarted = [];
+    $matched = [];
+    foreach (\Models\Cur_emp::orderBy('fio', 'asc')->orderBy('position', 'asc')->get() as $c) {
+        list($fam, $name, $otch) = splitFio($c->fio);
+        $e = $byKey[$fam . '|' . $name . '|' . $otch . '|' . $c->position] ?? null;
+        if ($e) {
+            $matched[$e->id] = true;
+        }
+        if (!$e || chosenDays($e) === 0) {
+            $notStarted[] = ['fio' => $c->fio, 'position' => $c->position, 'employee' => $e];
+        }
+    }
+    // Старые записи без пустых частей, которых нет в загруженном списке
+    foreach ($employees as $e) {
+        if (!isset($matched[$e->id]) && chosenDays($e) === 0) {
+            $notStarted[] = ['fio' => displayFio($e), 'position' => $e->position, 'employee' => $e];
+        }
+    }
+
+    $incomplete = [];
+    foreach ($employees as $e) {
+        $st = vacationStatus($e, $maxdays[$e->position] ?? 0);
+        if ($st['started'] && !$st['complete']) {
+            $incomplete[] = $e;
+        }
+    }
+
+    return ['notStarted' => $notStarted, 'incomplete' => $incomplete];
+}
+
+//Подтверждение отпуска после действия администратора:
+//  - есть части администратора: подтверждён, если выбрано дней >= maxday должности (автоматически),
+//    иначе не подтверждён (считается не заполненным);
+//  - частей администратора нет (например, после сброса), а выбрано меньше maxday: подтверждение
+//    снимается, чтобы сотрудник мог сам дозаполнить отпуск на сайте;
+//  - частей администратора нет, а своих дней достаточно: подтверждение не трогаем.
+function syncAdminConfirmation($employee)
+{
+    $maxday = \Models\Position::where('position', $employee->position)->value('maxday');
+    if ($maxday === null) {
+        return;
+    }
+    $hasAdmin = $employee->admin1 || $employee->admin2 || $employee->admin3;
+    $enough = chosenDays($employee) >= (int)$maxday;
+
+    if ($hasAdmin) {
+        $ready = $enough;
+    } elseif (!$enough) {
+        $ready = false;
+    } else {
+        return;
+    }
+    if ((bool)$employee->isReady !== $ready) {
+        $employee->update(['isReady' => $ready]);
+    }
 }
 ?>

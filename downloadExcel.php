@@ -12,19 +12,36 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 // 1. Очистка буфера
 ob_end_clean();
 
-$employees = \Models\Employees::orderBy('isReady', 'desc')  // Сначала все готовые
-               ->orderBy('position', 'asc')->orderBy('fam', 'asc') // Затем по должности, затем по фамилии
-               ->get();
+$allEmployees = \Models\Employees::orderBy('position', 'asc')->orderBy('fam', 'asc')->get(); // по должности, затем по фамилии
+$maxdays = \Models\Position::pluck('maxday', 'position')->all();
+
+// Сначала полностью заполненные, затем «не заполнено до конца» (дней меньше maxday ИЛИ не подтверждён).
+// Внутри каждой группы порядок по должности и фамилии сохраняется. Сотрудники, у которых
+// вообще нет записи (ни разу не заходили на сайт), в таблицу не попадают.
+$complete = [];
+$incomplete = [];
+foreach ($allEmployees as $e) {
+    $status = vacationStatus($e, $maxdays[$e->position] ?? 0);
+    if ($status['complete']) {
+        $complete[] = [$e, $status];
+    } else {
+        $incomplete[] = [$e, $status];
+    }
+}
+$employees = array_merge($complete, $incomplete);
 
 // Цвет части, введённой администратором (тот же, что в отчёте на сайте)
 const ADMIN_FILL = 'FFF2CC';
 const ADMIN_MARK = 'Введено администратором';
+// Цвет «не заполнено до конца» (тот же, что в отчёте на сайте)
+const INCOMPLETE_FILL = 'FDE8E6';
 
 // Раскладка столбцов: A Должность, B ФИО; затем для каждой части 4 столбца
 // (Начало, Конец, Длительность, Пометка): C-F, G-J, K-N; O - комментарий
 $partFirstCol = [1 => 3, 2 => 7, 3 => 11];
 $commentCol = 15;
-$lastCol = Coordinate::stringFromColumnIndex($commentCol); // O
+$statusCol = 16;
+$lastCol = Coordinate::stringFromColumnIndex($statusCol); // P
 
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
@@ -57,13 +74,18 @@ foreach ($partFirstCol as $n => $c) {
     }
     $sheet->getColumnDimension($L(3))->setWidth(18);
 }
-$sheet->setCellValue($lastCol . '1', 'Доп. Информация');
-$sheet->getColumnDimension($lastCol)->setWidth(20);
-$sheet->setCellValue($lastCol . '2', 'Комментарий');
+$commentL = Coordinate::stringFromColumnIndex($commentCol); // O
+$statusL = Coordinate::stringFromColumnIndex($statusCol);   // P
+$sheet->mergeCells($commentL . '1:' . $statusL . '1');
+$sheet->setCellValue($commentL . '1', 'Доп. Информация');
+$sheet->getColumnDimension($commentL)->setWidth(20);
+$sheet->setCellValue($commentL . '2', 'Комментарий');
+$sheet->getColumnDimension($statusL)->setWidth(34);
+$sheet->setCellValue($statusL . '2', 'Статус заполнения');
 
 // 3. Данные
 $row = 3;
-foreach ($employees as $employee) {
+foreach ($employees as list($employee, $status)) {
     $sheet->setCellValue('A' . $row, $employee->position);
     $sheet->setCellValue('B' . $row, displayFio($employee));
 
@@ -91,12 +113,20 @@ foreach ($employees as $employee) {
         }
     }
 
-    $sheet->setCellValue($lastCol . $row, $employee->comment === null ? 'Нет комментария' : $employee->comment);
+    $sheet->setCellValue($commentL . $row, $employee->comment === null ? 'Нет комментария' : $employee->comment);
+    $sheet->setCellValue($statusL . $row, $status['label']);
+
+    if (!$status['complete']) { // выделяем ФИО, должность и статус; части (в т.ч. жёлтые от администратора) не трогаем
+        foreach (['A' . $row . ':B' . $row, $statusL . $row] as $range) {
+            $sheet->getStyle($range)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(INCOMPLETE_FILL);
+        }
+    }
     $row++;
 }
 $lastDataRow = $row - 1;
 
-// Пометка переносится по словам, чтобы не раздувать таблицу
+// Пометка и статус переносятся по словам, чтобы не раздувать таблицу
+$sheet->getStyle($statusL . '3:' . $statusL . max(3, $lastDataRow))->getAlignment()->setWrapText(true);
 foreach ($partFirstCol as $c) {
     $col = Coordinate::stringFromColumnIndex($c + 3);
     $sheet->getStyle($col . '3:' . $col . max(3, $lastDataRow))->getAlignment()->setWrapText(true);
@@ -112,6 +142,12 @@ $sheet->setCellValue('A' . $legend, ADMIN_MARK);
 $sheet->getStyle('A' . $legend)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(ADMIN_FILL);
 $sheet->getStyle('A' . $legend)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
 $sheet->setCellValue('B' . $legend, '— часть отпуска введена администратором (без ограничений, дни не учитываются в лимитах должности)');
+
+$legend2 = $legend + 1;
+$sheet->setCellValue('A' . $legend2, 'Не заполнено');
+$sheet->getStyle('A' . $legend2)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(INCOMPLETE_FILL);
+$sheet->getStyle('A' . $legend2)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+$sheet->setCellValue('B' . $legend2, '— выбрано меньше максимума дней по должности или отпуск не подтверждён сотрудником (такие сотрудники в конце таблицы)');
 
 // 5. Настраиваем скачивание
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

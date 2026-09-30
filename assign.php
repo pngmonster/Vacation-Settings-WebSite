@@ -42,8 +42,10 @@
     }
 
     $totalDays = 0;
+    $status = null;
     if ($employee) {
-        $totalDays = (int)$employee->lenght1 + (int)$employee->lenght2 + (int)$employee->lenght3;
+        $totalDays = chosenDays($employee);
+        $status = vacationStatus($employee, $position->maxday ?? 0);
     }
 ?>
 <!DOCTYPE html>
@@ -74,6 +76,7 @@
                 <li>Дни такой части <strong>не учитываются</strong> в лимитах должности.</li>
                 <li>В общей Excel-выгрузке она помечается «Введено администратором» и выделяется цветом.</li>
                 <li>Сотрудник не может изменить или сбросить часть, введённую администратором.</li>
+                <li><strong>Автоподтверждение:</strong> если после сохранения выбрано <strong>не меньше maxday</strong> дней, отпуск подтверждается автоматически; если меньше — остаётся <strong>не заполненным</strong> (сотрудник сможет дозаполнить его сам).</li>
                 <li>Отпуск планируется на <strong><?= (int)$year ?> год</strong>.</li>
             </ul>
         </div>
@@ -104,8 +107,13 @@
                     <span><i class="fas fa-briefcase"></i> <?= esc($curEmp->position) ?></span>
                     <?php if ($position): ?><span>Максимум дней: <strong><?= (int)$position->maxday ?></strong></span><?php endif; ?>
                     <span>Выбрано всего: <strong><?= $totalDays ?></strong> дн.</span>
-                    <?php if ($employee && $employee->isReady): ?><span class="tag-ready"><i class="fas fa-check"></i> подтверждён сотрудником</span><?php endif; ?>
-                    <?php if (!$employee): ?><span class="muted">ещё не заходил на сайт</span><?php endif; ?>
+                    <?php if ($status && $status['complete']): ?>
+                        <span class="tag-ready"><i class="fas fa-check-circle"></i> Заполнено и подтверждено</span>
+                    <?php elseif ($status): ?>
+                        <span class="tag-incomplete"><i class="fas fa-exclamation-circle"></i> <?= esc($status['label']) ?></span>
+                    <?php else: ?>
+                        <span class="tag-incomplete"><i class="fas fa-exclamation-circle"></i> Не заполнено: ещё не заходил на сайт</span>
+                    <?php endif; ?>
                 </div>
             </div>
 

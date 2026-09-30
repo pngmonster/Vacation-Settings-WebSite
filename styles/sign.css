@@ -47,11 +47,12 @@ select {
     background: white;
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
-    overflow: hidden;
+    overflow: visible; /* иначе список подсказок ФИО обрезается краем окна */
     transition: var(--transition);
 }
 
 .login-header {
+    border-radius: var(--border-radius) var(--border-radius) 0 0; /* раньше скругляло overflow: hidden у контейнера */
     padding: var(--content-padding);
     background-color: var(--accent-color);
     color: white;
