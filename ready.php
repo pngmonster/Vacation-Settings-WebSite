@@ -2,9 +2,9 @@
 
     require "functions.php"; //Функции PHP
 
-    if(isset($_GET['id']))
+    if(validId($_GET['id'] ?? ''))
     {
-        $employee = \Models\Employees::find($_GET['id']);
+        $employee = \Models\Employees::find(validId($_GET['id']));
     }
     else
     {
@@ -57,12 +57,12 @@
             
                 <li class="employee-card" id="employee-<?= $employee->id ?>">
                     <div class="between">
-                        <div class="employee-name"><?php echo esc(upfl($employee->fam) . " " . upfl($employee->name) . " " . upfl($employee->otch))?></div>
+                        <div class="employee-name"><?php echo esc(displayFio($employee))?></div>
                         <div class="employee-position"><?php echo esc($employee->position)?></div>
                     </div>
 
                     <div class="vacation-parts">
-                        <div class="vacation-part">
+                        <div class="vacation-part<?= $employee->admin1 ? ' by-admin' : '' ?>">
 
                             <?php
                                 if ($employee->lenght1 === 0)
@@ -92,7 +92,7 @@
                                     $dateArr1 = dateCalc($day1, $mon1, $year, $len1);
                                     
                                     ?>
-                                    <div class="part-title">1 Часть</div>
+                                    <div class="part-title">1 Часть<?php if ($employee->admin1): ?> <span class="badge badge-admin"><i class="fas fa-user-shield"></i> Введено администратором</span><?php endif; ?></div>
                                     <div class="vacation-dates">
                                         <span class="date-label">Начало:</span>
                                         <span class="date-value"><?php echo $dateArr1['start']->format('d.m.Y'); ?></span>
@@ -110,7 +110,7 @@
                             ?>
                             
                         </div>
-                        <div class="vacation-part">
+                        <div class="vacation-part<?= $employee->admin2 ? ' by-admin' : '' ?>">
                             <?php
                                 if ($employee->lenght2 === 0)
                                 {
@@ -139,7 +139,7 @@
                                     $dateArr2 = dateCalc($day2, $mon2, $year, $len2);
                                     
                                     ?>
-                                    <div class="part-title">2 Часть</div>
+                                    <div class="part-title">2 Часть<?php if ($employee->admin2): ?> <span class="badge badge-admin"><i class="fas fa-user-shield"></i> Введено администратором</span><?php endif; ?></div>
                                     <div class="vacation-dates">
                                         <span class="date-label">Начало:</span>
                                         <span class="date-value"><?php echo $dateArr2['start']->format('d.m.Y'); ?></span>
@@ -156,7 +156,7 @@
                                 }
                             ?>
                         </div>
-                        <div class="vacation-part">
+                        <div class="vacation-part<?= $employee->admin3 ? ' by-admin' : '' ?>">
                             <?php
                                 if ($employee->lenght3 === 0)
                                 {
@@ -185,7 +185,7 @@
                                     $dateArr3 = dateCalc($day3, $mon3, $year, $len3);
                                     
                                     ?>
-                                    <div class="part-title">3 Часть</div>
+                                    <div class="part-title">3 Часть<?php if ($employee->admin3): ?> <span class="badge badge-admin"><i class="fas fa-user-shield"></i> Введено администратором</span><?php endif; ?></div>
                                     <div class="vacation-dates">
                                         <span class="date-label">Начало:</span>
                                         <span class="date-value"><?php echo $dateArr3['start']->format('d.m.Y'); ?></span>

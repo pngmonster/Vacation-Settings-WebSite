@@ -33,17 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 
     <nav class="navbar">
-        <div class="navbar-container">
-            <a href="/index.php">
-                <i class="fas fa-cog"></i> Настройки
-            </a>
-            <a href="/report.php">
-                <i class="fas fa-chart-bar"></i> Отчёт
-            </a>
-            <a href="/clear.php" class="danger-link">
-                <i class="fas fa-trash-alt"></i> Очистить БД
-            </a>
-        </div>
+        <?php $adminActive = 'clear'; include 'admin_nav.php'; ?>
     </nav>
 
     <div class="admin-container">

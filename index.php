@@ -22,17 +22,7 @@
     <?php $positions = \Models\Position::orderBy('position', 'asc')->get(['position'])->toArray(); //Получаем все должности из БД ?>
 
     <nav class="navbar">
-        <div class="navbar-container">
-            <a href="/index.php" class="active">
-                <i class="fas fa-cog"></i> Настройки
-            </a>
-            <a href="/report.php">
-                <i class="fas fa-chart-bar"></i> Отчёт
-            </a>
-            <a href="/clear.php" style="color: #e63946; font-weight: bold;">
-                <i class="fas fa-trash-alt"></i> Очистить БД
-            </a>
-        </div>
+        <?php $adminActive = 'settings'; include 'admin_nav.php'; ?>
 
         <div class="form-group">
 

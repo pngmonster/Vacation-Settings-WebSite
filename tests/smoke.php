@@ -114,6 +114,93 @@ check('часть 1 длиннее 21 дня (maxday 28) -> отказ', !savePa
 check('несуществующий сотрудник -> отказ', !savePart(999999999, 1, 'mar', 5, 14, $y)['ok']);
 check('год не задан -> отказ', !savePart($e4->id, 1, 'mar', 5, 14, 0)['ok']);
 
+// ---------- ФИО из любого числа слов ----------
+echo "ФИО:\n";
+check('splitFio: 3 слова как раньше', splitFio('Иванов  Иван   Иванович') === ['иванов', 'иван', 'иванович']);
+check('splitFio: 4 слова -> отчество из двух', splitFio('Гаджиев Магомед Али оглы') === ['гаджиев', 'магомед', 'али оглы']);
+check('splitFio: 2 слова -> пустое отчество', splitFio('Ким Ён') === ['ким', 'ён', '']);
+check('splitFio: неразрывный пробел', splitFio("Иванов\xC2\xA0Иван Иванович") === ['иванов', 'иван', 'иванович']);
+
+// ---------- Ввод отпуска администратором ----------
+echo "Ввод администратором:\n";
+$ca = \Models\Cur_emp::create(['fio' => 'Тестов Админ Тестович Оглы', 'position' => $pos]);
+$base = counters($pos);
+
+$r = adminSavePart($ca, 1, "$y-03-10", 3, $y);        // 3 дня: меньше минимума части (14)
+check('часть 1 админа: 3 дня (короче минимума 14) сохраняется', $r['ok'], json_encode($r));
+$ea = findEmployeeForCur($ca);
+check('сотрудник создан, fio сохранено как в списке', $ea && $ea->fio === 'Тестов Админ Тестович Оглы');
+check('часть помечена admin1 и сохранена как 10.03, 3 дня', $ea->admin1 === true && (int)$ea->mon1 === 3 && (int)$ea->day1 === 10 && (int)$ea->lenght1 === 3);
+check('дни админа НЕ попали в счётчики', counters($pos) === $base, json_encode(counters($pos)));
+
+$r = adminSavePart($ca, 2, "$y-03-11", 200, $y);      // 200 дней (>maxday 28), пересекается с частью 1, день 11 (>20)
+check('часть 2 админа: 200 дней, пересечение и число 11 - сохраняется без ограничений', $r['ok'], json_encode($r));
+check('счётчики по-прежнему не изменились', counters($pos) === $base);
+
+$r = adminSavePart($ca, 3, "$y-12-31", 366, $y);      // старт 31 декабря (в интерфейсе сотрудника только 1-20)
+check('часть 3 админа: 31 декабря + 366 дней', $r['ok'], json_encode($r));
+
+$ea = findEmployeeForCur($ca);
+$ea->update(['isReady' => true]);
+$r = adminSavePart($ca, 1, "$y-04-01", 5, $y);
+check('админ может менять даже подтверждённый сотрудником отпуск', $r['ok']);
+
+// сотрудник не может трогать части админа
+echo "Сотрудник и части админа:\n";
+$before = counters($pos);
+$ea->update(['isReady' => false]);
+$r = savePart($ea->id, 1, 'may', 5, 14, $y);
+check('сотрудник не может перезаписать часть админа', !$r['ok'] && strpos($r['errors'][0], 'администратором') !== false, json_encode($r));
+$r = resetPart($ea->id, 1, $y);
+check('сотрудник не может сбросить часть админа', !$r['ok'] && strpos($r['errors'][0], 'администратором') !== false);
+check('счётчики не изменились', counters($pos) === $before);
+
+// ---------- админ поверх части, выбранной сотрудником ----------
+echo "Админ поверх части сотрудника:\n";
+$cb = \Models\Cur_emp::create(['fio' => 'Тестова Своя Часть', 'position' => $pos]);
+$eb = findOrCreateEmployee($cb);
+$c0 = counters($pos);
+$r = savePart($eb->id, 1, 'jan', 2, 14, $y);
+check('сотрудник выбрал 2 янв + 14 (счётчик jan +14)', $r['ok'] && (counters($pos)['jan'] ?? 0) === ($c0['jan'] ?? 0) + 14, json_encode(counters($pos)));
+$r = adminSavePart($cb, 1, "$y-02-05", 30, $y);
+$c1 = counters($pos);
+check('админ заменил её: 14 дней возвращены в jan, февраль не изменился', $r['ok'] && ($c1['jan'] ?? 0) === ($c0['jan'] ?? 0) && ($c1['feb'] ?? 0) === ($c0['feb'] ?? 0), json_encode($c1));
+$eb = findOrCreateEmployee($cb);
+check('часть теперь помечена как введённая администратором', $eb->admin1 === true && (int)$eb->lenght1 === 30);
+
+$r = adminResetPart($eb->id, 1, $y);
+check('сброс части админа: счётчики не меняются (не уходят в минус)', $r['ok'] && counters($pos) === $c1, json_encode(counters($pos)));
+$eb = findOrCreateEmployee($cb);
+check('после сброса часть пуста и без пометки', (int)$eb->lenght1 === 0 && $eb->admin1 === false);
+
+$savePart = savePart($eb->id, 2, 'apr', 3, 14, $y);
+$cX = counters($pos);
+$r = adminResetPart($eb->id, 2, $y);
+check('админ сбрасывает часть, выбранную сотрудником: дни возвращаются', $r['ok'] && ($cX['apr'] ?? 0) - (counters($pos)['apr'] ?? 0) === 14, json_encode(counters($pos)));
+
+// ---------- удаление сотрудника ----------
+echo "Удаление сотрудника:\n";
+$cc = \Models\Cur_emp::create(['fio' => 'Тестов Удаляемый', 'position' => $pos]);
+$ec = findOrCreateEmployee($cc);
+$c0 = counters($pos);
+savePart($ec->id, 1, 'jun', 2, 14, $y);          // своя часть: учитывается в счётчиках
+adminSavePart($cc, 2, "$y-06-20", 10, $y);        // часть админа: в счётчиках не учитывается
+check('до удаления в счётчиках только своя часть (jun +14)', (counters($pos)['jun'] ?? 0) === ($c0['jun'] ?? 0) + 14, json_encode(counters($pos)));
+check('deleteEmployee вернул true', deleteEmployee($ec->id, $y) === true);
+check('после удаления счётчики вернулись к исходным (не ушли в минус)', counters($pos) === $c0, json_encode(counters($pos)) . ' vs ' . json_encode($c0));
+check('запись сотрудника удалена', \Models\Employees::where('id', $ec->id)->doesntExist());
+check('удаление несуществующего -> false', deleteEmployee(999999999, $y) === false);
+
+// ---------- ввод администратора: технические проверки ----------
+echo "Ввод администратора - ошибки ввода:\n";
+check('дата не в году отпусков -> отказ', !adminSavePart($ca, 1, ($y + 1) . '-01-10', 10, $y)['ok']);
+check('несуществующая дата 30 февраля -> отказ', !adminSavePart($ca, 1, "$y-02-30", 10, $y)['ok']);
+check('пустая дата -> отказ', !adminSavePart($ca, 1, '', 10, $y)['ok']);
+check('мусор вместо даты -> отказ', !adminSavePart($ca, 1, 'abc', 10, $y)['ok']);
+check('0 дней -> отказ', !adminSavePart($ca, 1, "$y-05-01", 0, $y)['ok']);
+check('367 дней -> отказ', !adminSavePart($ca, 1, "$y-05-01", 367, $y)['ok']);
+check('часть 4 -> отказ', !adminSavePart($ca, 4, "$y-05-01", 5, $y)['ok']);
+
 DB::connection()->rollBack();
 
 echo "\n" . ($failed ? "ПРОВАЛЕНО: $failed из $total\n" : "Все проверки пройдены ($total)\n");

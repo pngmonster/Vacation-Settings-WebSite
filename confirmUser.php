@@ -1,9 +1,14 @@
 <?php require "functions.php";
 
-    if($_POST['confirm_save'] === "1" && $_POST['id'])
+    if(($_POST['confirm_save'] ?? '') === "1" && validId($_POST['id'] ?? ''))
     {
-        $id = $_POST['id'];
+        $id = validId($_POST['id']);
         $employee = \Models\Employees::find($id);
+        if(!$employee)
+        {
+            header('Location: sign.php');
+            exit;
+        }
         if(($employee->lenght1 + $employee->lenght2 + $employee->lenght3) === $employee->position()->first()->maxday)
         {
             $employee->update(['isReady'=>TRUE]);

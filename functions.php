@@ -240,6 +240,76 @@ function minusLen($position, $day, $mon, $year, $lenght) //Вычитание и
 }
 
 // =====================================================================
+// ФИО и должности
+// =====================================================================
+
+//Схлопывает любые пробелы (в т.ч. неразрывные) в один и обрезает края. Регистр не меняется.
+function collapseSpaces($text)
+{
+    $text = preg_replace('/[\s\x{00A0}\x{200B}\x{FEFF}]+/u', ' ', (string)$text);
+    return trim($text);
+}
+
+//Ключ для сравнения должностей: без учёта регистра, ё = е, лишних пробелов
+function positionKey($text)
+{
+    return mb_strtolower(str_replace(['ё', 'Ё'], 'е', collapseSpaces($text)));
+}
+
+//Делит ФИО на части для колонок fam / name / otch (в нижнем регистре, как хранятся записи).
+//fam - первое слово, name - второе, otch - ВСЕ остальные слова (может быть пустой строкой).
+//Количество слов не ограничено. Для 3 слов результат тот же, что давал прежний textToFio().
+function splitFio($fio)
+{
+    $words = explode(' ', mb_strtolower(collapseSpaces($fio)));
+    return [
+        $words[0] ?? '',
+        $words[1] ?? '',
+        implode(' ', array_slice($words, 2)),
+    ];
+}
+
+//ФИО для показа: как в загруженном файле (employees.fio), а для старых записей - из fam/name/otch
+function displayFio($employee)
+{
+    if (!empty($employee->fio)) {
+        return $employee->fio;
+    }
+    $parts = array_filter([upfl($employee->fam), upfl($employee->name), upfl($employee->otch)], 'strlen');
+    return implode(' ', $parts);
+}
+
+//Находит сотрудника по записи списка (cur_emp) или создаёт, если он ещё не заходил
+function findOrCreateEmployee($curEmp)
+{
+    list($fam, $name, $otch) = splitFio($curEmp->fio);
+
+    $employee = \Models\Employees::where([
+        ['fam', '=', $fam],
+        ['name', '=', $name],
+        ['otch', '=', $otch],
+        ['position', '=', $curEmp->position],
+    ])->first();
+
+    if (!$employee) {
+        return \Models\Employees::create([
+            'fam' => $fam, 'name' => $name, 'otch' => $otch,
+            'position' => $curEmp->position, 'fio' => $curEmp->fio,
+        ]);
+    }
+    if (empty($employee->fio)) { // запись создана до появления колонки fio
+        $employee->update(['fio' => $curEmp->fio]);
+    }
+    return $employee;
+}
+
+//Максимальная длина одной части отпуска по maxday (правило из прежнего кода user.php)
+function maxPartDays($maxday)
+{
+    return ($maxday >= 48) ? 30 : 21;
+}
+
+// =====================================================================
 // Части отпуска 1..3: сохранение и сброс
 // Раньше эта логика была скопирована в user.php три раза и выполнялась без
 // транзакции: при одновременных запросах двое могли занять последний слот.
@@ -286,6 +356,9 @@ function savePart($employeeId, $n, $monthKey, $day, $len, $year)
             if ($employee->isReady) {
                 return partFail('Отпуск уже подтверждён, изменить его нельзя');
             }
+            if ($employee->{"admin$n"}) {
+                return partFail('Эта часть установлена администратором, изменить её нельзя');
+            }
 
             $position = \Models\Position::where('position', $employee->position)->lockForUpdate()->first();
             if (!$position) {
@@ -293,7 +366,7 @@ function savePart($employeeId, $n, $monthKey, $day, $len, $year)
             }
 
             $maxday = $position->maxday;
-            $maxPartDay = ($maxday >= 48) ? 30 : 21;
+            $maxPartDay = maxPartDays($maxday);
             $minPartDay = ($n === 1) ? 14 : 1;
 
             if ($len < $minPartDay || $len > $maxPartDay) {
@@ -371,6 +444,9 @@ function resetPart($employeeId, $n, $year)
             if ($employee->isReady) {
                 return partFail('Отпуск уже подтверждён, изменить его нельзя');
             }
+            if ($employee->{"admin$n"}) {
+                return partFail('Эта часть установлена администратором, сбросить её нельзя');
+            }
 
             // Блокируем должность, чтобы счётчики менялись атомарно
             \Models\Position::where('position', $employee->position)->lockForUpdate()->first();
@@ -424,5 +500,276 @@ function handlePartRequest($employee, $n)
     foreach ($result['errors'] as $error) {
         echo '<div class="answ">' . esc($error) . '</div>';
     }
+}
+
+// =====================================================================
+// Загрузка списка сотрудников (ФИО + должность) из Excel
+// =====================================================================
+
+//Допустимые должности: [ключ для сравнения => название из БД]
+function allowedPositions()
+{
+    $map = [];
+    foreach (\Models\Position::pluck('position') as $name) {
+        $map[positionKey($name)] = $name;
+    }
+    return $map;
+}
+
+/**
+ * Разбор и строгая проверка строк листа.
+ *
+ * $sheetRows - массив строк листа, индекс 0 = строка 1 в Excel; каждая строка - массив ячеек.
+ * Формат: столбец A - ФИО, столбец B - должность; первая строка может быть заголовком
+ * (если в ней есть ячейка «Должность» - столбцы определяются по заголовкам).
+ *
+ * Возвращает ['rows' => [['line', 'fio', 'position'], ...], 'errors' => [['line', 'text'], ...]].
+ * При ЛЮБОЙ ошибке файл нужно отклонить целиком. Должность сравнивается без учёта регистра и
+ * лишних пробелов, но пунктуация должна совпадать со списком; в результат попадает написание из БД.
+ */
+function validateEmployeeRows(array $sheetRows, array $allowed)
+{
+    $errors = [];
+    $rows = [];
+    $fioCol = 0;
+    $posCol = 1;
+    $headerLine = null;
+
+    // Заголовок: первая непустая строка
+    foreach ($sheetRows as $i => $cells) {
+        if (implode('', array_map('collapseSpaces', $cells)) === '') {
+            continue;
+        }
+        foreach ($cells as $c => $cell) {
+            if (positionKey($cell) === 'должность') {
+                $posCol = $c;
+                $headerLine = $i + 1;
+            }
+        }
+        if ($headerLine !== null) {
+            $fioCol = null;
+            foreach ($cells as $c => $cell) {
+                $k = positionKey($cell);
+                if ($c !== $posCol && ($k === 'фио' || $k === 'ф.и.о.' || $k === 'ф.и.о' || $k === 'сотрудник' || strpos($k, 'фио') === 0)) {
+                    $fioCol = $c;
+                    break;
+                }
+            }
+            if ($fioCol === null) { // явного «ФИО» нет - берём первый столбец, который не «Должность»
+                $fioCol = ($posCol === 0) ? 1 : 0;
+            }
+        }
+        break;
+    }
+
+    $seen = [];
+    foreach ($sheetRows as $i => $cells) {
+        $line = $i + 1;
+        if ($line === $headerLine) {
+            continue;
+        }
+        $fio = collapseSpaces($cells[$fioCol] ?? '');
+        $pos = collapseSpaces($cells[$posCol] ?? '');
+        if ($fio === '' && $pos === '') {
+            continue; // пустая строка
+        }
+        if ($fio === '') {
+            $errors[] = ['line' => $line, 'text' => "не указано ФИО (должность: «{$pos}»)"];
+            continue;
+        }
+        if ($pos === '') {
+            $errors[] = ['line' => $line, 'text' => "не указана должность (ФИО: {$fio})"];
+            continue;
+        }
+
+        $canonical = $allowed[positionKey($pos)] ?? null;
+        if ($canonical === null) {
+            $errors[] = ['line' => $line, 'text' => "должность «{$pos}» отсутствует в списке должностей (ФИО: {$fio})"];
+            continue;
+        }
+
+        $key = mb_strtolower($fio) . '|' . $canonical;
+        if (isset($seen[$key])) {
+            $errors[] = ['line' => $line, 'text' => "повтор строки {$seen[$key]}: {$fio} — {$canonical}"];
+            continue;
+        }
+        $seen[$key] = $line;
+        $rows[] = ['line' => $line, 'fio' => $fio, 'position' => $canonical];
+    }
+
+    if (!$rows && !$errors) {
+        $errors[] = ['line' => 0, 'text' => 'в файле нет ни одной строки с данными'];
+    }
+
+    return ['rows' => $rows, 'errors' => $errors];
+}
+
+//Читает первый лист файла (.xlsx / .xls) в массив строк. При ошибке бросает RuntimeException.
+function readSpreadsheetRows($path)
+{
+    try {
+        // Только настоящий Excel: без этого текстовый файл с расширением .xlsx читался бы как CSV
+        if (!in_array(\PhpOffice\PhpSpreadsheet\IOFactory::identify($path), ['Xlsx', 'Xls'], true)) {
+            throw new \RuntimeException('not excel');
+        }
+        $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($path);
+        $reader->setReadDataOnly(true);
+        $spreadsheet = $reader->load($path);
+    } catch (\Throwable $e) {
+        throw new \RuntimeException('не удалось прочитать файл — убедитесь, что это Excel (.xlsx или .xls)');
+    }
+
+    $sheet = $spreadsheet->getSheet(0);
+    if ($sheet->getHighestDataRow() > 5000) {
+        throw new \RuntimeException('в файле больше 5000 строк');
+    }
+
+    $rows = $sheet->toArray(null, true, true, false);
+    $spreadsheet->disconnectWorksheets();
+    return array_map(function ($r) {
+        return array_map('strval', $r);
+    }, $rows);
+}
+
+//Полностью заменяет список сотрудников (cur_emp) в одной транзакции. Возвращает число записей.
+function replaceEmployeeList(array $rows)
+{
+    \Illuminate\Database\Capsule\Manager::connection()->transaction(function () use ($rows) {
+        \Models\Cur_emp::query()->delete();
+        foreach (array_chunk($rows, 200) as $chunk) {
+            \Models\Cur_emp::insert(array_map(function ($r) {
+                return ['fio' => $r['fio'], 'position' => $r['position']];
+            }, $chunk));
+        }
+    });
+    return count($rows);
+}
+
+// =====================================================================
+// Ввод отпуска администратором
+// Без каких-либо ограничений (лимиты по месяцам, maxday, длина части, пересечения,
+// подтверждённость). Дни такой части НЕ входят в счётчики занятых дней должности
+// ("janEmp".."decEmp"), поэтому при её сбросе/удалении они не вычитаются.
+// =====================================================================
+
+//Разбор даты из <input type="date"> (YYYY-MM-DD). Возвращает DateTime или null.
+function parseIsoDate($text)
+{
+    $d = \DateTime::createFromFormat('!Y-m-d', (string)$text);
+    $err = \DateTime::getLastErrors();
+    if (!$d || ($err && ($err['warning_count'] || $err['error_count'])) || $d->format('Y-m-d') !== $text) {
+        return null;
+    }
+    return $d;
+}
+
+//Часть $n сотрудника из списка $curEmp (Models\Cur_emp). Сотрудник создаётся, если ещё не заходил.
+//Технические границы (не бизнес-ограничения): дата - в году отпусков, длительность 1..366 дней.
+function adminSavePart($curEmp, $n, $start, $len, $year)
+{
+    if (!in_array($n, [1, 2, 3], true)) {
+        return partFail('Неверный номер части');
+    }
+    $date = parseIsoDate($start);
+    if (!$date) {
+        return partFail('Укажите дату начала');
+    }
+    if ((int)$date->format('Y') !== (int)$year) {
+        return partFail("Дата начала должна быть в {$year} году");
+    }
+    if ($len < 1 || $len > 366) {
+        return partFail('Количество дней: целое число от 1 до 366');
+    }
+
+    return \Illuminate\Database\Capsule\Manager::connection()->transaction(
+        function () use ($curEmp, $n, $date, $len, $year) {
+            $employee = findOrCreateEmployee($curEmp);
+            $employee = \Models\Employees::where('id', $employee->id)->lockForUpdate()->first();
+            \Models\Position::where('position', $employee->position)->lockForUpdate()->first();
+
+            // Если здесь была часть, выбранная самим сотрудником, её дни были учтены в счётчиках - возвращаем
+            if ((int)$employee->{"lenght$n"} !== 0 && !$employee->{"admin$n"}) {
+                minusLen($employee->position, $employee->{"day$n"}, $employee->{"mon$n"}, $year, $employee->{"lenght$n"});
+            }
+
+            $employee->update([
+                "mon$n"    => (int)$date->format('n'),
+                "day$n"    => (int)$date->format('j'),
+                "lenght$n" => $len,
+                "admin$n"  => true,
+            ]);
+
+            return ['ok' => true, 'errors' => [], 'employeeId' => $employee->id];
+        },
+        3
+    );
+}
+
+//Сброс части $n администратором (любой: и его, и выбранной сотрудником)
+function adminResetPart($employeeId, $n, $year)
+{
+    if (!in_array($n, [1, 2, 3], true)) {
+        return partFail('Неверный номер части');
+    }
+    return \Illuminate\Database\Capsule\Manager::connection()->transaction(
+        function () use ($employeeId, $n, $year) {
+            $employee = \Models\Employees::where('id', $employeeId)->lockForUpdate()->first();
+            if (!$employee) {
+                return partFail('Сотрудник не найден');
+            }
+            \Models\Position::where('position', $employee->position)->lockForUpdate()->first();
+
+            if ((int)$employee->{"lenght$n"} !== 0 && !$employee->{"admin$n"}) {
+                minusLen($employee->position, $employee->{"day$n"}, $employee->{"mon$n"}, $year, $employee->{"lenght$n"});
+            }
+
+            $employee->update([
+                "mon$n"    => 0,
+                "day$n"    => 0,
+                "lenght$n" => 0,
+                "admin$n"  => false,
+            ]);
+
+            return ['ok' => true, 'errors' => []];
+        },
+        3
+    );
+}
+
+//Существующая запись сотрудника для строки списка (без создания)
+function findEmployeeForCur($curEmp)
+{
+    list($fam, $name, $otch) = splitFio($curEmp->fio);
+    return \Models\Employees::where([
+        ['fam', '=', $fam], ['name', '=', $name], ['otch', '=', $otch], ['position', '=', $curEmp->position],
+    ])->first();
+}
+
+//Удаление сотрудника с возвратом его дней в счётчики должности.
+//Дни частей, введённых администратором, в счётчики не входили - их не вычитаем.
+function deleteEmployee($employeeId, $year)
+{
+    return \Illuminate\Database\Capsule\Manager::connection()->transaction(function () use ($employeeId, $year) {
+        $employee = \Models\Employees::where('id', $employeeId)->lockForUpdate()->first();
+        if (!$employee) {
+            return false;
+        }
+        \Models\Position::where('position', $employee->position)->lockForUpdate()->first();
+
+        foreach ([1, 2, 3] as $n) {
+            if (!$employee->{"admin$n"}) {
+                minusLen($employee->position, $employee->{"day$n"}, $employee->{"mon$n"}, $year, $employee->{"lenght$n"});
+            }
+        }
+        \Models\Employees::destroy($employeeId);
+        return true;
+    }, 3);
+}
+
+//Проверка id из адреса/формы: только цифры (иначе PostgreSQL падает с ошибкой bigint). Возвращает строку-id или null.
+function validId($value)
+{
+    $value = (string)$value;
+    return (ctype_digit($value) && strlen($value) <= 18) ? $value : null;
 }
 ?>

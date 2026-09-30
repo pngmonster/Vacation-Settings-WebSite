@@ -13,6 +13,10 @@
     --transition: all 0.3s ease;
     --max-content-width: 1200px;
     --content-padding: 20px;
+    /* Цвет пометки «введено администратором» (тот же в Excel-выгрузке: FFF2CC) */
+    --admin-bg: #fff2cc;
+    --admin-border: #f0b429;
+    --admin-text: #7a5b00;
 }
 
 * {
@@ -547,13 +551,19 @@ h1 {
 }
 
 @media (max-width: 600px) {
+    .navbar {
+        position: static;
+    }
+
     .navbar-container {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
 
     .navbar-container a {
-        grid-template-columns: 1fr;
         width: 100%;
+        padding: 10px 6px;
+        font-size: 0.9rem;
     }
 }
 
@@ -580,4 +590,291 @@ h1 {
         opacity: 1;
         transform: translateY(0);
     }
+}
+/* ------- */
+/* Таблицы и информационные блоки админки */
+/* ------- */
+
+.info-card {
+    background: var(--light-color);
+    border-left: 4px solid var(--accent-color);
+    border-radius: var(--border-radius);
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.info-card ul {
+    margin: 8px 0 0 20px;
+}
+
+.table-wrap {
+    overflow-x: auto;
+    margin-bottom: 10px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+    vertical-align: middle;
+}
+
+.data-table th {
+    background: var(--light-color);
+    font-weight: 600;
+}
+
+.data-table .days-input {
+    max-width: 140px;
+}
+
+/* На узких экранах строки таблицы превращаются в карточки */
+@media (max-width: 600px) {
+    .data-table thead {
+        display: none;
+    }
+
+    .data-table,
+    .data-table tbody,
+    .data-table tr,
+    .data-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .data-table tr {
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        margin-bottom: 12px;
+        padding: 6px 0;
+    }
+
+    .data-table td {
+        border: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .data-table td::before {
+        content: attr(data-label);
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+}
+
+.subtitle {
+    margin: 30px 0 10px;
+    font-size: 1.3rem;
+    color: var(--dark-color);
+}
+
+.file-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--light-color);
+    font-size: 1rem;
+}
+
+.filter-input {
+    text-align: left;
+}
+
+.upload-errors ul {
+    margin: 8px 0 8px 20px;
+    text-align: left;
+}
+
+.info-card details {
+    margin-top: 12px;
+}
+
+.info-card summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.info-card ul.cols {
+    columns: 2;
+    margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+    .info-card ul.cols {
+        columns: 1;
+    }
+}
+
+/* Список ошибок загрузки: читаемый, с выравниванием по левому краю */
+.error-message.upload-errors {
+    display: block;
+    text-align: left;
+    color: #842029;
+    background-color: #f8d7da;
+    border-left: 4px solid #dc3545;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    margin-bottom: 15px;
+}
+
+.error-message.upload-errors li {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+div.success-message {
+    background: #e7f6ea;
+    border-radius: var(--border-radius);
+    padding: 12px 20px;
+    margin-bottom: 15px;
+}
+
+/* ------- */
+/* Ввод отпуска администратором */
+/* ------- */
+
+.field-label {
+    display: block;
+    margin: 10px 0 6px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.emp-summary {
+    margin: 10px 0 20px;
+    padding: 16px 20px;
+    border-radius: var(--border-radius);
+    background: var(--light-color);
+}
+
+.emp-summary-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    word-break: break-word;
+}
+
+.emp-summary-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin-top: 6px;
+    font-size: 0.95rem;
+}
+
+.emp-summary-meta .muted {
+    color: #6c757d;
+}
+
+.tag-ready {
+    color: #2e7d32;
+    font-weight: 600;
+}
+
+.assign-parts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.assign-part {
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 16px;
+    background: #fff;
+}
+
+.assign-part.by-employee {
+    border-color: #81c784;
+    background: #f6fbf6;
+}
+
+.assign-part.by-admin {
+    border-color: var(--admin-border);
+    background: var(--admin-bg);
+}
+
+.assign-part-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.assign-range {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.badge-admin {
+    background: var(--admin-border);
+    color: #fff;
+}
+
+.badge-employee {
+    background: #e3f4e4;
+    color: #2e7d32;
+}
+
+.badge-empty {
+    background: var(--hover-color);
+    color: #6c757d;
+}
+
+.assign-part .days-input {
+    text-align: left;
+    background: #fff;
+}
+
+.assign-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.assign-buttons .save-btn {
+    margin-top: 0;
+    padding: 12px;
+    font-size: 1rem;
+}
+
+.assign-buttons .reset-btn {
+    background-color: #6c757d;
+}
+
+.assign-buttons .reset-btn:hover {
+    background-color: #565e64;
+}
+
+/* Часть отпуска, введённая администратором (отчёт и страница «Ваш отпуск») */
+.vacation-part.by-admin {
+    background-color: var(--admin-bg);
+    border-left: 4px solid var(--admin-border);
+}
+
+.vacation-part.by-admin .part-title {
+    color: var(--admin-text);
 }

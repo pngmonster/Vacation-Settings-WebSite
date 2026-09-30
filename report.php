@@ -11,13 +11,7 @@
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
         $id = (int)$_POST['delete_id'];
         if ($id > 0) {
-            $employee = \Models\Employees::find($id);
-            if ($employee) {
-                minusLen($employee->position, $employee->day1, $employee->mon1, $year, $employee->lenght1);
-                minusLen($employee->position, $employee->day2, $employee->mon2, $year, $employee->lenght2);
-                minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
-                \Models\Employees::destroy($id);
-            }
+            deleteEmployee($id, $year); // вернёт дни в счётчики должности (кроме частей администратора)
         }
         // Post/Redirect/Get: возвращаемся на ту же страницу с теми же фильтрами
         header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?') . ($_GET ? '?' . http_build_query($_GET) : ''));
@@ -42,17 +36,7 @@
     <?php $positions = \Models\Position::orderBy('position', 'asc')->get(['position'])->toArray(); //Получаем все должности из БД ?>
 
     <nav class="navbar">
-        <div class="navbar-container">
-            <a href="/index.php">
-                <i class="fas fa-cog"></i> Настройки
-            </a>
-            <a href="/report.php" class="active">
-                <i class="fas fa-chart-bar"></i> Отчёт
-            </a>
-            <a href="/clear.php" style="color: #e63946; font-weight: bold;">
-                <i class="fas fa-trash-alt"></i> Очистить БД
-            </a>
-        </div>
+        <?php $adminActive = 'report'; include 'admin_nav.php'; ?>
 
         <?php//Список должностей?>
         <div class="form-group">
@@ -157,10 +141,10 @@
 
         <ul class="employees-list">
             
-            <?php foreach ($employees as $employee): ?>
+            <?php foreach ($employees ?? [] as $employee): ?>
                 <li class="employee-card" id="employee-<?= $employee->id ?>">
                     <div class="between">
-                        <div class="employee-name"><?php echo esc(upfl($employee->fam) . " " . upfl($employee->name) . " " . upfl($employee->otch))?></div>
+                        <div class="employee-name"><?php echo esc(displayFio($employee))?></div>
                         <button class="delete-btn" onclick="confirmDelete(<?= (int)$employee->id ?>, <?= esc(json_encode(upfl($employee->name) . ' ' . upfl($employee->otch), JSON_UNESCAPED_UNICODE)) ?>)">
                             <i class="fas fa-trash-alt"></i>
                         </button>
@@ -169,7 +153,7 @@
                     <div class="employee-position"><?php echo esc($employee->position)?></div>
 
                     <div class="vacation-parts">
-                        <div class="vacation-part">
+                        <div class="vacation-part<?= $employee->admin1 ? ' by-admin' : '' ?>">
 
                             <?php
                                 if ($employee->lenght1 === 0)
@@ -199,7 +183,7 @@
                                     $dateArr1 = dateCalc($day1, $mon1, $year, $len1);
                                     
                                     ?>
-                                    <div class="part-title">1 Часть</div>
+                                    <div class="part-title">1 Часть<?php if ($employee->admin1): ?> <span class="badge badge-admin"><i class="fas fa-user-shield"></i> Введено администратором</span><?php endif; ?></div>
                                     <div class="vacation-dates">
                                         <span class="date-label">Начало:</span>
                                         <span class="date-value"><?php echo $dateArr1['start']->format('d.m.Y'); ?></span>
@@ -217,7 +201,7 @@
                             ?>
                             
                         </div>
-                        <div class="vacation-part">
+                        <div class="vacation-part<?= $employee->admin2 ? ' by-admin' : '' ?>">
                             <?php
                                 if ($employee->lenght2 === 0)
                                 {
@@ -246,7 +230,7 @@
                                     $dateArr2 = dateCalc($day2, $mon2, $year, $len2);
                                     
                                     ?>
-                                    <div class="part-title">2 Часть</div>
+                                    <div class="part-title">2 Часть<?php if ($employee->admin2): ?> <span class="badge badge-admin"><i class="fas fa-user-shield"></i> Введено администратором</span><?php endif; ?></div>
                                     <div class="vacation-dates">
                                         <span class="date-label">Начало:</span>
                                         <span class="date-value"><?php echo $dateArr2['start']->format('d.m.Y'); ?></span>
@@ -263,7 +247,7 @@
                                 }
                             ?>
                         </div>
-                        <div class="vacation-part">
+                        <div class="vacation-part<?= $employee->admin3 ? ' by-admin' : '' ?>">
                             <?php
                                 if ($employee->lenght3 === 0)
                                 {
@@ -292,7 +276,7 @@
                                     $dateArr3 = dateCalc($day3, $mon3, $year, $len3);
                                     
                                     ?>
-                                    <div class="part-title">3 Часть</div>
+                                    <div class="part-title">3 Часть<?php if ($employee->admin3): ?> <span class="badge badge-admin"><i class="fas fa-user-shield"></i> Введено администратором</span><?php endif; ?></div>
                                     <div class="vacation-dates">
                                         <span class="date-label">Начало:</span>
                                         <span class="date-value"><?php echo $dateArr3['start']->format('d.m.Y'); ?></span>

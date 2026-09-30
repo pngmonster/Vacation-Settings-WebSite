@@ -22,7 +22,7 @@
         <div class="header">
 
         <?php // Подгружаем данные сотрудника
-            $employeeId = $_GET['id'] ?? null;
+            $employeeId = validId($_GET['id'] ?? '');
             $employee = $position = $name = $userPosition = $maxday = null;
             $part1Days = $part2Days = $part3Days = 0;
 
@@ -159,7 +159,7 @@
                     if ($maxday)
                     {
                         ?> <span class="days-label">Вам доступно</span>
-                        <span class="days-count" id="maxday"><?php echo $maxday - $part1Days - $part2Days - $part3Days?></span>
+                        <span class="days-count" id="maxday"><?php echo max(0, $maxday - $part1Days - $part2Days - $part3Days)?></span>
                         <span class="days-label">дней отпуска</span>
 
                         <?php
@@ -193,7 +193,7 @@
                             if ($employee->lenght1 != 0)
                             {
                                 $hid1 = 'style="display: none;"';
-                                $succ = "success";
+                                $succ = "success" . ($employee->admin1 ? " admin-set" : "");
                                 $dis1 = "disabled";
                             }
                             else
@@ -205,6 +205,7 @@
                         ?>
                         <div class="vacation-section <?php echo $succ ?>">
                             <h2 class="section-title">Часть 1 отпуска</h2>
+                            <?php if ($employee->admin1): ?><div class="admin-badge"><i class="fas fa-user-shield"></i> Установлено администратором. Изменить нельзя</div><?php endif; ?>
 
                             <form method="POST">
                                 <div class="date-row">
@@ -277,12 +278,16 @@
                                 
                             </form>
 
+                            <?php if (!$employee->admin1): ?>
+
                             <form method="POST" action="">
                                 <input type="hidden" name="cancel1" value="1">
                                 <button type="submit" class="apply-btn" onclick="return confirm('Вы уверены, что хотите сбросить 1 часть отпуска?')">
                                     Сбросить
                                 </button>
                             </form>
+
+                            <?php endif; ?>
 
                                 </div>
                             
@@ -329,7 +334,7 @@
                             if ($employee->lenght2 != 0)
                             {
                                 $hid2 = 'style="display: none;"';
-                                $succ2 = "success";
+                                $succ2 = "success" . ($employee->admin2 ? " admin-set" : "");
                                 $dis2 = "disabled";
                             }
                             else
@@ -342,6 +347,7 @@
 
                         <div class="vacation-section <?php echo $succ2 ?>">
                             <h2 class="section-title">Часть 2 отпуска</h2>
+                            <?php if ($employee->admin2): ?><div class="admin-badge"><i class="fas fa-user-shield"></i> Установлено администратором. Изменить нельзя</div><?php endif; ?>
 
                             <form method="POST">
                                 <div class="date-row">
@@ -414,12 +420,16 @@
                                         
                             </form>
                                         
+                            <?php if (!$employee->admin2): ?>
+                                        
                             <form method="POST" action="">
                                 <input type="hidden" name="cancel2" value="1">
                                 <button type="submit" class="apply-btn" onclick="return confirm('Вы уверены, что хотите сбросить 2 часть отпуска?')">
                                     Сбросить
                                 </button>
                             </form>
+                                        
+                            <?php endif; ?>
                                         
                                 </div>
                                         
@@ -465,7 +475,7 @@
                             if ($employee->lenght3 != 0)
                             {
                                 $hid3 = 'style="display: none;"';
-                                $succ3 = "success";
+                                $succ3 = "success" . ($employee->admin3 ? " admin-set" : "");
                                 $dis3 = "disabled";
                             }
                             else
@@ -478,6 +488,7 @@
 
                         <div class="vacation-section <?php echo $succ3 ?>">
                             <h2 class="section-title">Часть 3 отпуска (опционально)</h2>
+                            <?php if ($employee->admin3): ?><div class="admin-badge"><i class="fas fa-user-shield"></i> Установлено администратором. Изменить нельзя</div><?php endif; ?>
 
                             <form method="POST">
                                 <div class="date-row">
@@ -550,12 +561,16 @@
                                         
                             </form>
                                         
+                            <?php if (!$employee->admin3): ?>
+                                        
                             <form method="POST" action="">
                                 <input type="hidden" name="cancel3" value="1">
                                 <button type="submit" class="apply-btn" onclick="return confirm('Вы уверены, что хотите сбросить 3 часть отпуска?')">
                                     Сбросить
                                 </button>
                             </form>
+                                        
+                            <?php endif; ?>
                                         
                                 </div>
                                         

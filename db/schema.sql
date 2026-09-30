@@ -11,7 +11,9 @@
 -- в кавычках - иначе запросы приложения не найдут их.
 -- =====================================================================
 
--- Должности: лимиты дней по месяцам (jan..dec) и уже занятые дни ("janEmp"..).
+-- Должности: фиксированный список (ниже), новые должности добавлять нельзя.
+-- Администратор может менять только maxday (страница "Должности").
+-- Лимиты дней по месяцам (jan..dec) и уже занятые дни ("janEmp"..).
 -- maxday - сколько дней отпуска положено сотруднику этой должности.
 CREATE TABLE IF NOT EXISTS positions (
     position text PRIMARY KEY,
@@ -47,6 +49,7 @@ CREATE TABLE IF NOT EXISTS positions (
 -- Название lenght (с опечаткой) - как в коде, менять нельзя.
 CREATE TABLE IF NOT EXISTS employees (
     id        bigserial PRIMARY KEY,
+    -- ФИО делится на слова: fam - первое, name - второе, otch - все остальные (может быть пустой строкой)
     fam       text    NOT NULL,
     name      text    NOT NULL,
     otch      text    NOT NULL,
@@ -61,7 +64,14 @@ CREATE TABLE IF NOT EXISTS employees (
     day3      integer NOT NULL DEFAULT 0,
     lenght3   integer NOT NULL DEFAULT 0,
     "isReady" boolean NOT NULL DEFAULT false,
-    comment   text
+    comment   text,
+    -- Полное ФИО как в загруженном списке (любое число слов, регистр как в файле).
+    -- У записей, созданных до появления колонки, NULL - тогда ФИО собирается из fam/name/otch.
+    fio       text,
+    -- Часть введена администратором (без ограничений; дни НЕ входят в счётчики должности)
+    admin1    boolean NOT NULL DEFAULT false,
+    admin2    boolean NOT NULL DEFAULT false,
+    admin3    boolean NOT NULL DEFAULT false
 );
 CREATE INDEX IF NOT EXISTS employees_position_idx ON employees (position);
 
@@ -70,9 +80,13 @@ CREATE INDEX IF NOT EXISTS employees_position_idx ON employees (position);
 -- БД сама гарантировала уникальность:
 -- CREATE UNIQUE INDEX IF NOT EXISTS employees_person_uniq ON employees (fam, name, otch, position);
 
--- Список ФИО для выпадающего списка на странице входа ("Фамилия Имя Отчество").
+-- Список сотрудников (ФИО + должность). Загружается администратором из Excel и
+-- ПОЛНОСТЬЮ заменяется при каждой загрузке. Должность - всегда из таблицы positions.
 CREATE TABLE IF NOT EXISTS cur_emp (
-    fio text PRIMARY KEY
+    id       bigserial PRIMARY KEY,
+    fio      text NOT NULL,
+    position text NOT NULL,
+    UNIQUE (fio, position)
 );
 
 -- Параметры. Приложение всегда читает строку с id = 1 (Params::find(1)).
@@ -95,3 +109,26 @@ CREATE TABLE IF NOT EXISTS users (
 INSERT INTO params (id, year)
 VALUES (1, EXTRACT(YEAR FROM CURRENT_DATE)::int + 1)
 ON CONFLICT (id) DO NOTHING;
+
+-- Фиксированный список должностей и максимальное число дней отпуска (maxday).
+-- Лимиты по месяцам изначально 0 - администратор задаёт их на странице "Настройки".
+INSERT INTO positions (position, maxday) VALUES
+    ('Врач СМП', 42),
+    ('Врач АиР', 48),
+    ('Врач педиатр', 42),
+    ('Врач психиатр', 65),
+    ('Фельдшер СМП', 42),
+    ('Фельдшер ВБ(диализ)', 42),
+    ('Фельдшер АиР', 48),
+    ('Фельдшер психиатр.', 65),
+    ('Фельдшер ППВ', 42),
+    ('Медсестра ВБ', 42),
+    ('Медсестра АиР', 48),
+    ('Санитар', 65),
+    ('Уборщик', 28),
+    ('Подсобный рабочий', 28),
+    ('Старший врач', 42),
+    ('Старший фельдшер', 42),
+    ('Зав.хозяйством', 33),
+    ('Дезинфектор', 33)
+ON CONFLICT (position) DO NOTHING;

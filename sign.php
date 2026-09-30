@@ -3,6 +3,36 @@
     require "config.php"; //Подключение к БД
     require "functions.php"; //Функции PHP
 
+    $error = null;
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST')
+    {
+        // Сотрудник выбирается из списка (cur_emp) по id: ФИО и должность берутся из БД,
+        // а не из текста формы, поэтому ФИО может состоять из любого числа слов.
+        $curId = (int)($_POST['emp'] ?? 0);
+        $curEmp = $curId ? \Models\Cur_emp::find($curId) : null;
+
+        if (!$curEmp)
+        {
+            $error = 'Выберите свои ФИО из списка';
+        }
+        elseif (empty($_POST['agreement']))
+        {
+            $error = 'Нужно согласие на обработку персональных данных';
+        }
+        else
+        {
+            $employee = findOrCreateEmployee($curEmp);
+
+            // Абсолютный URL с динамическим определением домена
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+            header("Location: " . $protocol . $_SERVER['HTTP_HOST'] . "/user.php?id=" . urlencode($employee->id));
+            exit();
+        }
+    }
+
+    $items = \Models\Cur_emp::orderBy('fio', 'asc')->orderBy('position', 'asc')->get(['id', 'fio', 'position'])->toArray();
+
 ?>
 
 <!DOCTYPE html>
@@ -15,6 +45,7 @@
     <link rel="icon" href="./ico/palm.png" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="./styles/sign.css">
+    <link rel="stylesheet" href="./styles/combobox.css">
     <style>
         .answ {
             margin-top: 15px;
@@ -33,41 +64,23 @@
         </div>
         <div class="login-body">
 
-            <form method="POST">
+            <?php if (!$items): ?>
 
-                <?php $fio = \Models\Cur_emp::orderBy('fio', 'asc')->get(['fio'])->toArray();//Получаем все ФИО из БД ?>
+                <div class="answ">Список сотрудников ещё не загружен. Обратитесь к администратору.</div>
 
-                <div class="form-group">
-                    <label for="fullname">ФИО полностью</label>
-                    <!-- <input type="text" name="fullname" class="form-control" placeholder="Введите ваше ФИО" required> -->
+            <?php else: ?>
 
-                    <select name="fullname" class="form-control dropdown" required> <!--Отображение Фамилий-->
-                       <option value="" disabled selected>Выберите ваше ФИО</option>
-
-                        <?php foreach ($fio as $row): ?>
-                        <option value="<?= htmlspecialchars($row['fio']) ?>">
-                            <?= htmlspecialchars($row['fio']) ?>
-                        </option>
-                        <?php endforeach; ?>
-
-                    </select>
-                </div>
-
-                <?php $positions = \Models\Position::orderBy('position', 'asc')->get(['position'])->toArray(); //Получаем все должности из БД ?>
+            <form method="POST" id="sign-form">
 
                 <div class="form-group">
-                    <label for="position">Должность</label>
-
-                    <select name="position" class="form-control dropdown" required> <!--Отображение должностей-->
-                       <option value="" disabled selected>Выберите должность</option>
-
-                        <?php foreach ($positions as $row): ?>
-                        <option value="<?= htmlspecialchars($row['position']) ?>">
-                            <?= htmlspecialchars($row['position']) ?>
-                        </option>
-                        <?php endforeach; ?>
-
-                    </select>
+                    <label for="fio-input">Ваше ФИО</label>
+                    <div class="combo">
+                        <input type="text" id="fio-input" class="combo-input" placeholder="Начните вводить фамилию"
+                               autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-controls="fio-list">
+                        <ul id="fio-list" class="combo-list" hidden></ul>
+                    </div>
+                    <input type="hidden" name="emp" id="fio-id">
+                    <div class="pos-info" id="pos-info" hidden>Должность: <strong id="pos-name"></strong></div>
                 </div>
 
                 <div class="form-checkbox">
@@ -82,90 +95,47 @@
                 </button>
             </form>
 
-            <?php
+            <div class="answ" id="answ"><?= $error ? esc($error) : '' ?></div>
 
-            if ($_POST)
-            {
-                $fio = textToFio($_POST["fullname"]);
-                $position = $_POST["position"] ?? null;
+            <noscript><div class="answ">Для входа нужен включённый JavaScript.</div></noscript>
 
-                // ФИО и должность должны быть из выпадающих списков (cur_emp / positions),
-                // а не произвольным текстом из подделанного запроса
-                $inLists = $fio !== 0 && $position
-                    && \Models\Cur_emp::where('fio', $_POST["fullname"])->exists()
-                    && \Models\Position::where('position', $position)->exists();
+            <script src="./assets/fio-combobox.js"></script>
+            <script>
+                (function () {
+                    var items = <?= json_encode($items, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+                    var input = document.getElementById('fio-input');
+                    var hidden = document.getElementById('fio-id');
+                    var info = document.getElementById('pos-info');
+                    var answ = document.getElementById('answ');
 
-                if ($inLists) {
-                    $fam = $fio[0];
-                    $name = $fio[1];
-                    $otch = $fio[2];
-                
-                    // Ищем существующую запись
-                    $employee = \Models\Employees::where([
-                        ['fam', '=', $fam],
-                        ['name', '=', $name],
-                        ['otch', '=', $otch],
-                        ['position', '=', $position]
-                    ])->first();
-                    
-                    if (!$employee) {
-                        // Создаем новую запись
-                        $employee = \Models\Employees::create([
-                            'fam' => $fam,
-                            'name' => $name,
-                            'otch' => $otch,
-                            'position' => $position
-                        ]);
-                    }
-                
-                    // 1. Проверяем, были ли уже отправлены заголовки
-                    // Получаем текущий домен динамически
-                    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-                    $domain = $_SERVER['HTTP_HOST'];
-                    $baseUrl = $protocol . $domain;
+                    var combo = FioCombobox.init({
+                        input: input,
+                        list: document.getElementById('fio-list'),
+                        hidden: hidden,
+                        items: items,
+                        onSelect: function (item) {
+                            answ.textContent = '';
+                            if (item) {
+                                document.getElementById('pos-name').textContent = item.position;
+                                info.hidden = false;
+                            } else {
+                                info.hidden = true;
+                            }
+                        }
+                    });
 
-                    // 1. Проверяем, были ли уже отправлены заголовки
-                    if (headers_sent()) {
-                        $redirectUrl = $baseUrl . "/user.php?id=" . urlencode($employee->id);
-                        die("<script>window.location.href='{$redirectUrl}';</script>");
-                    }
+                    // Нельзя отправить форму, пока ФИО не выбрано из списка
+                    document.getElementById('sign-form').addEventListener('submit', function (e) {
+                        if (!hidden.value) {
+                            e.preventDefault();
+                            answ.textContent = 'Выберите свои ФИО из списка подсказок';
+                            input.focus();
+                        }
+                    });
+                })();
+            </script>
 
-                    // 2. Очищаем буфер вывода
-                    ob_clean();
-
-                    // 3. Используем абсолютный URL с динамическим определением домена
-                    $redirectUrl = $baseUrl . "/user.php?id=" . urlencode($employee->id);
-                    header("Location: " . $redirectUrl);
-                    exit(); // Всегда вызывайте exit после header Location
-
-                    // 4. Добавляем дополнительный JavaScript редирект
-                    echo "<script>window.location.href='{$redirectUrl}';</script>";
-                    exit();
-
-                }
-                
-                else {
-
-                    if ($fio === 0)
-                    {
-                        echo '<div class="answ">Неверно указанно ФИО</div>';
-                    }
-                    elseif ($position === 0)
-                    {
-                        echo '<div class="answ">Должность не выбрана</div>';
-                    }
-                    elseif ($fio !== 0 && $position)
-                    {
-                        echo '<div class="answ">Сотрудник или должность не найдены в списках</div>';
-                    }
-                    else
-                    {
-                        echo '<div class="answ">Неизвестная ошибка</div>';
-                    }
-                }
-            }
-            
-            ?>
+            <?php endif; ?>
         </div>
     </div>
 </body>

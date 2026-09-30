@@ -5,9 +5,9 @@ require "functions.php"; //Функции PHP
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Font;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 // 1. Очистка буфера
 ob_end_clean();
@@ -16,152 +16,109 @@ $employees = \Models\Employees::orderBy('isReady', 'desc')  // Сначала в
                ->orderBy('position', 'asc')->orderBy('fam', 'asc') // Затем по должности, затем по фамилии
                ->get();
 
-// 2. Создаем Excel-документ
+// Цвет части, введённой администратором (тот же, что в отчёте на сайте)
+const ADMIN_FILL = 'FFF2CC';
+const ADMIN_MARK = 'Введено администратором';
+
+// Раскладка столбцов: A Должность, B ФИО; затем для каждой части 4 столбца
+// (Начало, Конец, Длительность, Пометка): C-F, G-J, K-N; O - комментарий
+$partFirstCol = [1 => 3, 2 => 7, 3 => 11];
+$commentCol = 15;
+$lastCol = Coordinate::stringFromColumnIndex($commentCol); // O
+
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 
-// 3. Заполняем данными (пример)
-
-$sheet->getStyle('A1:L1')->applyFromArray([
+// 2. Шапка
+$sheet->getStyle('A1:' . $lastCol . '1')->applyFromArray([
     'font' => ['bold' => true],
-
-    'alignment' => [
-        'horizontal' => Alignment::HORIZONTAL_CENTER
-    ],
-    'borders' => [
-        'allBorders' => [
-            'borderStyle' => Border::BORDER_THIN,
-            'color' => ['rgb' => '000000'] // Черные границы
-        ]
-    ],
-    'fill' => [
-        'fillType' => Fill::FILL_SOLID,
-        'startColor' => [
-            'rgb' => 'D0D0D0'
-        ]
-    ]
+    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
+    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D0D0D0']],
 ]);
 
 $sheet->mergeCells('A1:B1');
 $sheet->setCellValue('A1', 'Сотрудники');
-
-$sheet->getColumnDimension('A')->setWidth(22); 
+$sheet->getColumnDimension('A')->setWidth(22);
 $sheet->setCellValue('A2', 'Должность');
-
-$sheet->getColumnDimension('B')->setWidth(32); 
+$sheet->getColumnDimension('B')->setWidth(32);
 $sheet->setCellValue('B2', 'ФИО');
 
+foreach ($partFirstCol as $n => $c) {
+    $L = function ($offset) use ($c) { return Coordinate::stringFromColumnIndex($c + $offset); };
+    $sheet->mergeCells($L(0) . '1:' . $L(3) . '1');
+    $sheet->setCellValue($L(0) . '1', "$n Часть");
+    $sheet->setCellValue($L(0) . '2', 'Начало');
+    $sheet->setCellValue($L(1) . '2', 'Конец');
+    $sheet->setCellValue($L(2) . '2', 'Длительность');
+    $sheet->setCellValue($L(3) . '2', 'Пометка');
+    for ($k = 0; $k < 3; $k++) {
+        $sheet->getColumnDimension($L($k))->setWidth(12);
+    }
+    $sheet->getColumnDimension($L(3))->setWidth(18);
+}
+$sheet->setCellValue($lastCol . '1', 'Доп. Информация');
+$sheet->getColumnDimension($lastCol)->setWidth(20);
+$sheet->setCellValue($lastCol . '2', 'Комментарий');
 
-$sheet->mergeCells('C1:E1');
-$sheet->setCellValue('C1', '1 Часть');
-
-$sheet->getColumnDimension('C')->setWidth(12); 
-$sheet->setCellValue('C2', 'Начало');
-
-$sheet->getColumnDimension('D')->setWidth(12); 
-$sheet->setCellValue('D2', 'Конец');
-
-$sheet->getColumnDimension('E')->setWidth(12); 
-$sheet->setCellValue('E2', 'Дительность');
-
-$sheet->mergeCells('F1:H1');
-$sheet->setCellValue('F1', '2 Часть');
-
-$sheet->getColumnDimension('F')->setWidth(12); 
-$sheet->setCellValue('F2', 'Начало');
-
-$sheet->getColumnDimension('G')->setWidth(12); 
-$sheet->setCellValue('G2', 'Конец');
-
-$sheet->getColumnDimension('H')->setWidth(12); 
-$sheet->setCellValue('H2', 'Дительность');
-
-$sheet->mergeCells('I1:K1');
-$sheet->setCellValue('I1', '3 Часть');
-
-$sheet->getColumnDimension('I')->setWidth(12); 
-$sheet->setCellValue('I2', 'Начало');
-
-$sheet->getColumnDimension('J')->setWidth(12); 
-$sheet->setCellValue('J2', 'Конец');
-
-$sheet->getColumnDimension('K')->setWidth(12); 
-$sheet->setCellValue('K2', 'Дительность');
-
-$sheet->setCellValue('L1', 'Доп. Информация');
-$sheet->getColumnDimension('L')->setWidth(20); 
-$sheet->setCellValue('L2', 'Комментарий');
-
-$i = 2;
-$data = [];
-
-foreach ($employees as $employee):
-    $i++;
-    $day1 = $employee->day1;
-    $mon1 = $employee->mon1;
-    $len1 = $employee->lenght1;
-    $dateArr1 = dateCalc($day1, $mon1, $year, $len1);
-
-    $day2 = $employee->day2;
-    $mon2 = $employee->mon2;
-    $len2 = $employee->lenght2;
-    $dateArr2 = dateCalc($day2, $mon2, $year, $len2);
-
-    $day3 = $employee->day3;
-    $mon3 = $employee->mon3;
-    $len3 = $employee->lenght3;
-    $dateArr3 = dateCalc($day3, $mon3, $year, $len3);
-
-    $com = $employee->comment;
-
-    $data[] = [
-        $employee->position, 
-        upfl($employee->fam) . ' ' . upfl($employee->name) . ' ' . upfl($employee->otch),
-        $len1 === 0 ? '-' : $dateArr1['start']->format('d.m.Y'),
-        $len1 === 0 ? '-' : $dateArr1['end']->format('d.m.Y'),
-        $len1 === 0 ? '-' : $len1,
-        $len2 === 0 ? '-' : $dateArr2['start']->format('d.m.Y'),
-        $len2 === 0 ? '-' : $dateArr2['end']->format('d.m.Y'),
-        $len2 === 0 ? '-' : $len2,
-        $len3 === 0 ? '-' : $dateArr3['start']->format('d.m.Y'),
-        $len3 === 0 ? '-' : $dateArr3['end']->format('d.m.Y'),
-        $len3 === 0 ? '-' : $len3,
-        $com === null ? 'Нет комментария' : $com
-    ];
-endforeach;
-
+// 3. Данные
 $row = 3;
-foreach ($data as $item) {
-    $sheet->setCellValue('A' . $row, $item[0]);
-    $sheet->setCellValue('B' . $row, $item[1]);
-    $sheet->setCellValue('C' . $row, $item[2]);
-    $sheet->setCellValue('D' . $row, $item[3]);
-    $sheet->setCellValue('E' . $row, $item[4]);
-    $sheet->setCellValue('F' . $row, $item[5]);
-    $sheet->setCellValue('G' . $row, $item[6]);
-    $sheet->setCellValue('H' . $row, $item[7]);
-    $sheet->setCellValue('I' . $row, $item[8]);
-    $sheet->setCellValue('J' . $row, $item[9]);
-    $sheet->setCellValue('K' . $row, $item[10]);
-    $sheet->setCellValue('L' . $row, $item[11]);
+foreach ($employees as $employee) {
+    $sheet->setCellValue('A' . $row, $employee->position);
+    $sheet->setCellValue('B' . $row, displayFio($employee));
+
+    foreach ($partFirstCol as $n => $c) {
+        $len = (int)$employee->{"lenght$n"};
+        $isAdmin = (bool)$employee->{"admin$n"} && $len !== 0;
+        $cells = ['-', '-', '-', ''];
+
+        if ($len !== 0) {
+            $dates = dateCalc($employee->{"day$n"}, $employee->{"mon$n"}, $year, $len);
+            $cells = [
+                $dates['start']->format('d.m.Y'),
+                $dates['end']->format('d.m.Y'),
+                $len,
+                $isAdmin ? ADMIN_MARK : '',
+            ];
+        }
+        foreach ($cells as $k => $value) {
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($c + $k) . $row, $value);
+        }
+
+        if ($isAdmin) { // выделяем всю часть цветом
+            $range = Coordinate::stringFromColumnIndex($c) . $row . ':' . Coordinate::stringFromColumnIndex($c + 3) . $row;
+            $sheet->getStyle($range)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(ADMIN_FILL);
+        }
+    }
+
+    $sheet->setCellValue($lastCol . $row, $employee->comment === null ? 'Нет комментария' : $employee->comment);
     $row++;
 }
+$lastDataRow = $row - 1;
 
-$sheet->getStyle('A2:L' . $i)->applyFromArray([
-    'borders' => [
-        'allBorders' => [
-            'borderStyle' => Border::BORDER_THIN,
-            'color' => ['rgb' => '000000'] // Черные границы
-        ]
-    ]
+// Пометка переносится по словам, чтобы не раздувать таблицу
+foreach ($partFirstCol as $c) {
+    $col = Coordinate::stringFromColumnIndex($c + 3);
+    $sheet->getStyle($col . '3:' . $col . max(3, $lastDataRow))->getAlignment()->setWrapText(true);
+}
+
+$sheet->getStyle('A2:' . $lastCol . max(2, $lastDataRow))->applyFromArray([
+    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']]],
 ]);
 
-// 4. Настраиваем скачивание
+// 4. Легенда
+$legend = $lastDataRow + 2;
+$sheet->setCellValue('A' . $legend, ADMIN_MARK);
+$sheet->getStyle('A' . $legend)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(ADMIN_FILL);
+$sheet->getStyle('A' . $legend)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+$sheet->setCellValue('B' . $legend, '— часть отпуска введена администратором (без ограничений, дни не учитываются в лимитах должности)');
+
+// 5. Настраиваем скачивание
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment;filename="Отпуска_'. $year . "_сохранено_" . date('d-m-Y') . '.xlsx"');
 header('Cache-Control: max-age=0');
 
-// 5. Отправляем файл
+// 6. Отправляем файл
 $writer = new Xlsx($spreadsheet);
 $writer->save('php://output');
 exit;

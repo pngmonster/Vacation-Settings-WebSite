@@ -518,3 +518,41 @@ input:focus {
         }
     }
 }
+/* Часть, введённая администратором */
+.vacation-section.success.admin-set {
+    background-color: #fff2cc;
+    border-color: #f0b429;
+}
+
+.vacation-section.success.admin-set::before {
+    content: '\f505'; /* щит с человеком */
+    color: #d99a00;
+}
+
+.vacation-section.success.admin-set .section-title {
+    color: #7a5b00;
+}
+
+.vacation-section.success.admin-set .form-group,
+.vacation-section.success.admin-set .availableDays {
+    color: #5c4500;
+}
+
+.vacation-section.success.admin-set select,
+.vacation-section.success.admin-set input {
+    border-color: #e6c15a;
+    background-color: rgba(240, 180, 41, 0.08);
+}
+
+.admin-badge {
+    margin: 4px 0 12px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: #f0b429;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+    align-self: flex-start;
+    max-width: calc(100% - 40px);
+}

@@ -23,7 +23,11 @@ class Employees extends Eloquent
         'lenght3',
         'day3',
         'isReady',
-        'comment'
+        'comment',
+        'fio',
+        'admin1',
+        'admin2',
+        'admin3'
     ];
 
     public $timestamps = false;
