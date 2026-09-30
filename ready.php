@@ -57,8 +57,8 @@
             
                 <li class="employee-card" id="employee-<?= $employee->id ?>">
                     <div class="between">
-                        <div class="employee-name"><?php echo upfl($employee->fam) . " " . upfl($employee->name) . " " . upfl($employee->otch)?></div>
-                        <div class="employee-position"><?php echo $employee->position?></div>
+                        <div class="employee-name"><?php echo esc(upfl($employee->fam) . " " . upfl($employee->name) . " " . upfl($employee->otch))?></div>
+                        <div class="employee-position"><?php echo esc($employee->position)?></div>
                     </div>
 
                     <div class="vacation-parts">
@@ -210,7 +210,7 @@
 
                         <div class="part-title">Комментарий</div>
                         <div class="vacation-dates">
-                            <span class="date-value"><?php echo $com  ?? "Нет комментария"?></span>
+                            <span class="date-value"><?php echo esc($com ?? "Нет комментария")?></span>
                         </div>
                     </div>
                     

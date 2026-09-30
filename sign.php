@@ -89,7 +89,13 @@
                 $fio = textToFio($_POST["fullname"]);
                 $position = $_POST["position"] ?? null;
 
-                if ($fio != 0 && $position) {
+                // ФИО и должность должны быть из выпадающих списков (cur_emp / positions),
+                // а не произвольным текстом из подделанного запроса
+                $inLists = $fio !== 0 && $position
+                    && \Models\Cur_emp::where('fio', $_POST["fullname"])->exists()
+                    && \Models\Position::where('position', $position)->exists();
+
+                if ($inLists) {
                     $fam = $fio[0];
                     $name = $fio[1];
                     $otch = $fio[2];
@@ -147,6 +153,10 @@
                     elseif ($position === 0)
                     {
                         echo '<div class="answ">Должность не выбрана</div>';
+                    }
+                    elseif ($fio !== 0 && $position)
+                    {
+                        echo '<div class="answ">Сотрудник или должность не найдены в списках</div>';
                     }
                     else
                     {

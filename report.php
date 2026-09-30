@@ -7,15 +7,21 @@
     $queryParams['show_all'] = 1;
     $showAllUrl = '?' . http_build_query($queryParams);
 
-    if (isset($_GET['delete_id'])) {
-        $id = (int)$_GET['delete_id'];
+    // Удаление только через POST (ссылка/обновление страницы больше не удаляют записи)
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+        $id = (int)$_POST['delete_id'];
         if ($id > 0) {
             $employee = \Models\Employees::find($id);
-            minusLen($employee->position, $employee->day1, $employee->mon1, $year, $employee->lenght1);
-            minusLen($employee->position, $employee->day2, $employee->mon2, $year, $employee->lenght2);
-            minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
-            \Models\Employees::destroy($id);
+            if ($employee) {
+                minusLen($employee->position, $employee->day1, $employee->mon1, $year, $employee->lenght1);
+                minusLen($employee->position, $employee->day2, $employee->mon2, $year, $employee->lenght2);
+                minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
+                \Models\Employees::destroy($id);
+            }
         }
+        // Post/Redirect/Get: возвращаемся на ту же страницу с теми же фильтрами
+        header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?') . ($_GET ? '?' . http_build_query($_GET) : ''));
+        exit;
     }
 ?>
 
@@ -140,7 +146,7 @@
         <form method="get" class="search-form">
             <?php foreach ($_GET as $key => $value): ?>
                 <?php if ($key !== 'search'): ?>
-                    <input type="hidden" name="<?= htmlspecialchars($key) ?>" value="<?= htmlspecialchars($value) ?>">
+                    <input type="hidden" name="<?= esc($key) ?>" value="<?= esc(is_array($value) ? '' : $value) ?>">
                 <?php endif; ?>
             <?php endforeach; ?>
                 
@@ -154,13 +160,13 @@
             <?php foreach ($employees as $employee): ?>
                 <li class="employee-card" id="employee-<?= $employee->id ?>">
                     <div class="between">
-                        <div class="employee-name"><?php echo upfl($employee->fam) . " " . upfl($employee->name) . " " . upfl($employee->otch)?></div>
-                        <button class="delete-btn" onclick="confirmDelete(<?= $employee->id ?>, '<?= upfl($employee->name) ?> <?= upfl($employee->otch) ?>')">
+                        <div class="employee-name"><?php echo esc(upfl($employee->fam) . " " . upfl($employee->name) . " " . upfl($employee->otch))?></div>
+                        <button class="delete-btn" onclick="confirmDelete(<?= (int)$employee->id ?>, <?= esc(json_encode(upfl($employee->name) . ' ' . upfl($employee->otch), JSON_UNESCAPED_UNICODE)) ?>)">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
 
-                    <div class="employee-position"><?php echo $employee->position?></div>
+                    <div class="employee-position"><?php echo esc($employee->position)?></div>
 
                     <div class="vacation-parts">
                         <div class="vacation-part">
@@ -310,7 +316,7 @@
 
                         <div class="part-title">Комментарий</div>
                         <div class="vacation-dates">
-                            <span class="date-value"><?php echo $com  ?? "Нет комментария"?></span>
+                            <span class="date-value"><?php echo esc($com ?? "Нет комментария")?></span>
                         </div>
                     </div>
 
@@ -321,14 +327,19 @@
         <script>
             function confirmDelete(id, name) {
                 if (confirm('Удалить ' + name + '?')) {
-                    // Создаем объект URL из текущего адреса
-                    const url = new URL(window.location.href);
-                    
-                    // Добавляем параметр delete_id
-                    url.searchParams.set('delete_id', id);
-                    
-                    // Переходим по новому URL
-                    window.location.href = url.toString();
+                    // Отправляем POST на текущий адрес (фильтры в URL сохраняются)
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = window.location.href;
+
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'delete_id';
+                    input.value = id;
+                    form.appendChild(input);
+
+                    document.body.appendChild(form);
+                    form.submit();
                 }
             }
         </script>

@@ -11,19 +11,26 @@ use Dotenv\Dotenv;
 
 // Загружаем .env
 $dotenv = Dotenv::createImmutable(__DIR__);
-$dotenv->load();
+$dotenv->safeLoad(); // .env необязателен: в Docker переменные приходят из окружения
+
+// Значение из .env / переменных окружения
+$env = function ($key, $default = null) {
+    if (isset($_ENV[$key])) return $_ENV[$key];
+    $v = getenv($key);
+    return $v !== false ? $v : $default;
+};
 
 // Теперь можно юзать переменные окружения
 $capsule = new Capsule;
 $capsule->addConnection([
-    'driver'    => $_ENV['DB_CONNECTION'],
-    'host'      => $_ENV['DB_HOST'],
-    'port'      => $_ENV['DB_PORT'],
-    'database'  => $_ENV['DB_DATABASE'],
-    'username'  => $_ENV['DB_USERNAME'],
-    'password'  => $_ENV['DB_PASSWORD'],
-    'charset'   => $_ENV['DB_CHARSET'],
-    'schema'    => $_ENV['DB_SCHEMA'],
+    'driver'    => $env('DB_CONNECTION'),
+    'host'      => $env('DB_HOST'),
+    'port'      => $env('DB_PORT'),
+    'database'  => $env('DB_DATABASE'),
+    'username'  => $env('DB_USERNAME'),
+    'password'  => $env('DB_PASSWORD'),
+    'charset'   => $env('DB_CHARSET'),
+    'schema'    => $env('DB_SCHEMA'),
     'prefix'    => '',
 ]);
 
@@ -33,5 +40,8 @@ $capsule->bootEloquent();
 try {
     $capsule::connection()->getPdo();
 } catch (\Exception $e) {
-    die("Ошибка подключения: " . $e->getMessage());
+    // Текст ошибки (адрес БД, логин) пользователю не показываем - только в лог
+    error_log('DB connection failed: ' . $e->getMessage());
+    http_response_code(500);
+    die("Ошибка подключения к базе данных");
 }

@@ -76,7 +76,7 @@
 
     <?php //Загрузка кортежа с выбранной должностью
 
-    $tupleOfCurrentPos = \Models\Position::where('position', '=', $_GET['position'])->get()->toArray();
+    $tupleOfCurrentPos = \Models\Position::where('position', '=', $_GET['position'] ?? '')->get()->toArray();
     $params = \Models\Params::find(1);
 
     ?>
@@ -87,7 +87,7 @@
             
             <div class="year-card">
                 <h3>Год</h3>
-                <input name="year" type="number" placeholder="Год" class="days-input" value="<?= $_POST['year'] ?? $params->year?>" min="2025" max="2200">
+                <input name="year" type="number" placeholder="Год" class="days-input" value="<?= esc($_POST['year'] ?? $params->year) ?>" min="2025" max="2200">
             </div>
         
             <div class="months-container">
@@ -127,7 +127,7 @@
     <?php
 
     // Получаем объект модели (не преобразуем в массив!)
-    $position = \Models\Position::where('position', $_GET['position'])->first();
+    $position = \Models\Position::where('position', $_GET['position'] ?? '')->first();
 
     if ($_POST && $position && $params) {
         $position->update([

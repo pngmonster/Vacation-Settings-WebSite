@@ -2,6 +2,8 @@
 session_start();
 require_once 'config.php';
 
+$error = null;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
@@ -9,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = \Models\User::where('username', $username)->first();
 
     if ($user && password_verify($password, $user->password)) {
+        session_regenerate_id(true); // защита от фиксации сессии
         $_SESSION['is_admin'] = ($user->role === 'admin');
         $_SESSION['username'] = $user->username;
         header('Location: index.php');

@@ -1,0 +1,60 @@
+# Локальный запуск и тестирование:
+#   docker compose up -d --build
+#   сайт: http://localhost:8080   (админка: /login.php, демо-вход admin / admin)
+#
+# Значения берутся из .env (см. .env.example); без него используются значения по умолчанию ниже.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-vacation}
+      POSTGRES_USER: ${DB_USERNAME:-vacation}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vacation}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Скрипты выполняются ОДИН РАЗ при создании пустого тома (по алфавиту).
+      # Чтобы применить заново:  docker compose down -v && docker compose up -d
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      # Демо-данные (выдуманные должности, лимиты, ФИО, админ admin/admin).
+      # Для чистой БД закомментируйте следующую строку.
+      - ./db/seed_demo.sql:/docker-entrypoint-initdb.d/02-seed-demo.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "127.0.0.1:${DB_PUBLISH_PORT:-5433}:5432"   # только localhost, для psql/DBeaver
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-vacation}
+      DB_USERNAME: ${DB_USERNAME:-vacation}
+      DB_PASSWORD: ${DB_PASSWORD:-vacation}
+      DB_CHARSET: utf8
+      DB_SCHEMA: public
+    ports:
+      - "${APP_PORT:-8080}:80"
+
+  # Веб-интерфейс к БД, запускается только по запросу: docker compose --profile tools up -d
+  adminer:
+    image: adminer:4
+    profiles: ["tools"]
+    depends_on:
+      - db
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
+
+volumes:
+  pgdata:

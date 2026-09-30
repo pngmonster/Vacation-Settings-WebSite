@@ -1,2 +1,5 @@
 /vendor
 .env
+*.xlsx
+.~lock.*
+.DS_Store

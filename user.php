@@ -23,13 +23,15 @@
 
         <?php // Подгружаем данные сотрудника
             $employeeId = $_GET['id'] ?? null;
+            $employee = $position = $name = $userPosition = $maxday = null;
+            $part1Days = $part2Days = $part3Days = 0;
 
             if ($employeeId)
             {
                 // Находим сотрудника по ID
                 $employee = \Models\Employees::find($employeeId);
 
-                if ($employee->isReady) // Если пользователь сохранен, то перенаправляем
+                if ($employee && $employee->isReady) // Если пользователь сохранен, то перенаправляем
                 {
                     header("Location: ready.php?id=" . urlencode($employeeId));
                     exit;
@@ -91,7 +93,7 @@
                 </div>
                 
                 <?php
-                $months = [
+                $months = !$position ? [] : [
                     'Январь' => $position->jan - $position->janEmp,
                     'Февраль' => $position->feb - $position->febEmp,
                     'Март' => $position->mar - $position->marEmp,
@@ -165,7 +167,7 @@
 
                     else
                     {
-                        ?><span class="days-label"><?php echo $answer; ?></span><?php
+                        ?><span class="days-label"><?php echo esc($answer ?? ''); ?></span><?php
                     }
                 ?>
             </div>
@@ -176,7 +178,7 @@
             <?php
                 if ($name and $userPosition)
                 {
-                    ?><h1> Здравствуйте, <?php echo $name ?>!</h1>
+                    ?><h1> Здравствуйте, <?php echo esc($name) ?>!</h1>
 
 
                     <div class="posth1">Здесь вы можете заполнить свои пожелания на отпуск в <?php echo $year ?> году</div>
@@ -286,115 +288,13 @@
                             
                             <div class="answ-container">
                                             
-                                <?php
-
-                                    if($_POST['cancel1'])
-                                    {
-                                        minusLen($employee->position, $employee->day1, $employee->mon1, $year, $employee->lenght1);
-
-                                        $employee->update([
-                                            'mon1' => 0,
-                                            'lenght1' => 0,
-                                            'day1' => 0
-                                            ]);
-
-                                        echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
-                                        exit;
-                                    }
-                                    elseif($_POST['part1-month'] && $_POST['part1-day'] && $_POST['part1-days'])
-                                    {
-                                        if($year)
-                                        {
-                                            $day1 = $_POST['part1-day'];
-                                            $month1 = $_POST['part1-month'];
-                                            $lenght1 = $_POST['part1-days'];
-
-                                            $conMon1 = convertMonth($monthsToInt[$_POST['part1-month']]);
-
-                                            $thisAvalibleDays = $position->{$conMon1['this']} - $position->{$conMon1['thisEmp']};
-                                            $nextAvalibleDays = $position->{$conMon1['next']} - $position->{$conMon1['nextEmp']};
-
-                                            if($lenght1 >= $minPartDay && $lenght1 <= $maxPartDay)
-                                            {
-                                                $dateArr1 = dateCalc($day1, $month1, $year, $lenght1);
-
-                                                $isCurOk = false;
-                                                $isNextOk = false;
-
-                                                if($thisAvalibleDays - $dateArr1[0]['this'] >= 0)
-                                                {
-                                                    $isCurOk = true;
-                                                }
-                                                else
-                                                {
-                                                    echo '<div class="answ">Не хватает в этом месяце</div>';
-                                                    $isCurOk = false;
-                                                }
-                                                if($nextAvalibleDays - $dateArr1[0]['next'] >= 0)
-                                                {
-                                                    $isNextOk = true;
-                                                }
-                                                else
-                                                {
-                                                    echo '<div class="answ">Не хватает в след месяце</div>';
-                                                    $isNextOk = false;
-                                                }
-
-                                                if($isCurOk && $isNextOk)
-                                                {   
-
-                                                    if($lenght1 + $employee->lenght2 + $employee->lenght3 <= $maxday)
-                                                    {
-                                                        $mon1 = $dateArr1['start']->format('n'); //Месяц без ведущего нуля
-
-                                                        if($employee->lenght1 != 0)
-                                                        {
-                                                            minusLen($employee->position, $employee->day1, $employee->mon1, $year, $employee->lenght1);
-                                                        }
-
-                                                        $employee->update([
-                                                            'mon1' => $mon1,
-                                                            'lenght1' => $lenght1,
-                                                            'day1' => $day1
-                                                            ]);
-
-                                                        plusLen($employee->position, $day1, $mon1, $year, $lenght1);
-
-                                                        echo "Данные успешно обновлены!";
-
-                                                        echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
-                                                        exit;
-                                                    }
-
-                                                    else
-                                                    {
-                                                        echo '<div class="answ">Количество всех дней отпуска не должно привышать максимальное значение</div>';
-                                                    }
-
-                                                }
-                                            }
-
-                                            else
-                                            {
-                                                echo '<div class="answ">Запрещенная длина отпуска</div>';
-                                            }
-
-                                        }
-
-                                        else
-                                        {
-                                            echo '<div class="answ">Год не найден</div>';
-                                        }
-                                    }
-
-
-                                ?>
+                                <?php handlePartRequest($employee, 1); ?>
 
                             </div>
 
                             <script>
                                 //Подсчет доступных дней
-                                const positionData = JSON.parse('<?= json_encode($position->toArray()) ?>');
+                                const positionData = <?= json_encode($position->toArray(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
                                 document.getElementById('part1-month').addEventListener('change', function() {
                                     const month = this.value;
@@ -436,7 +336,7 @@
                             {
                                 $hid2 = "";
                                 $succ2 = "";
-                                $dis3 = "";
+                                $dis2 = "";
                             }
                         ?>
 
@@ -525,115 +425,13 @@
                                         
                             <div class="answ-container">
                                         
-                                <?php
-
-                                    if($_POST['cancel2'])
-                                    {
-                                        minusLen($employee->position, $employee->day2, $employee->mon2, $year, $employee->lenght2);
-                                    
-                                        $employee->update([
-                                            'mon2' => 0,
-                                            'lenght2' => 0,
-                                            'day2' => 0
-                                            ]);
-                                        
-                                        echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
-                                        exit;
-                                    }
-                                    elseif($_POST['part2-month'] && $_POST['part2-day'] && $_POST['part2-days'])
-                                    {
-                                        if($year)
-                                        {
-                                            $day2 = $_POST['part2-day'];
-                                            $month2 = $_POST['part2-month'];
-                                            $lenght2 = $_POST['part2-days'];
-                                        
-                                            $conMon2 = convertMonth($monthsToInt[$_POST['part2-month']]);
-                                        
-                                            $thisAvalibleDays = $position->{$conMon2['this']} - $position->{$conMon2['thisEmp']};
-                                            $nextAvalibleDays = $position->{$conMon2['next']} - $position->{$conMon2['nextEmp']};
-                                        
-                                            if($lenght2 >= 1 && $lenght2 <= $maxPartDay)
-                                            {
-                                                $dateArr2 = dateCalc($day2, $month2, $year, $lenght2);
-                                            
-                                                $isCurOk = false;
-                                                $isNextOk = false;
-                                            
-                                                if($thisAvalibleDays - $dateArr2[0]['this'] >= 0)
-                                                {
-                                                    $isCurOk = true;
-                                                }
-                                                else
-                                                {
-                                                    echo '<div class="answ">Не хватает в этом месяце</div>';
-                                                    $isCurOk = false;
-                                                }
-                                                if($nextAvalibleDays - $dateArr2[0]['next'] >= 0)
-                                                {
-                                                    $isNextOk = true;
-                                                }
-                                                else
-                                                {
-                                                    echo '<div class="answ">Не хватает в след месяце</div>';
-                                                    $isNextOk = false;
-                                                }
-                                            
-                                                if($isCurOk && $isNextOk)
-                                                {   
-                                                
-                                                    if($lenght2 + $employee->lenght1 + $employee->lenght3 <= $maxday)
-                                                    {
-                                                        $mon2 = $dateArr2['start']->format('n'); //Месяц без ведущего нуля
-                                                    
-                                                        if($employee->lenght2 != 0)
-                                                        {
-                                                            minusLen($employee->position, $employee->day2, $employee->mon2, $year, $employee->lenght2);
-                                                        }
-                                                    
-                                                        $employee->update([
-                                                            'mon2' => $mon2,
-                                                            'lenght2' => $lenght2,
-                                                            'day2' => $day2
-                                                            ]);
-                                                        
-                                                        plusLen($employee->position, $day2, $mon2, $year, $lenght2);
-                                                        
-                                                        echo "Данные успешно обновлены!";
-                                                        
-                                                        echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
-                                                        exit;
-                                                    }
-                                                
-                                                    else
-                                                    {
-                                                        echo '<div class="answ">Количество всех дней отпуска не должно привышать максимальное значение</div>';
-                                                    }
-                                                
-                                                }
-                                            }
-                                        
-                                            else
-                                            {
-                                                echo '<div class="answ">Запрещенная длина отпуска</div>';
-                                            }
-                                        
-                                        }
-                                    
-                                        else
-                                        {
-                                            echo '<div class="answ">Год не найден</div>';
-                                        }
-                                    }
-                                
-                                
-                                ?>
+                                <?php handlePartRequest($employee, 2); ?>
 
                             </div>
                                 
                             <script>
                                 //Подсчет доступных дней
-                                const positionData2 = JSON.parse('<?= json_encode($position->toArray()) ?>');
+                                const positionData2 = <?= json_encode($position->toArray(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
                                 
                                 document.getElementById('part2-month').addEventListener('change', function() {
                                     const month2 = this.value;
@@ -763,115 +561,13 @@
                                         
                             <div class="answ-container">
                                         
-                                <?php
-
-                                    if($_POST['cancel3'])
-                                    {
-                                        minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
-                                    
-                                        $employee->update([
-                                            'mon3' => 0,
-                                            'lenght3' => 0,
-                                            'day3' => 0
-                                            ]);
-                                        
-                                        echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
-                                        exit;
-                                    }
-                                    elseif($_POST['part3-month'] && $_POST['part3-day'] && $_POST['part3-days'])
-                                    {
-                                        if($year)
-                                        {
-                                            $day3 = $_POST['part3-day'];
-                                            $month3 = $_POST['part3-month'];
-                                            $lenght3 = $_POST['part3-days'];
-                                        
-                                            $conMon3 = convertMonth($monthsToInt[$_POST['part3-month']]);
-                                        
-                                            $thisAvalibleDays = $position->{$conMon3['this']} - $position->{$conMon3['thisEmp']};
-                                            $nextAvalibleDays = $position->{$conMon3['next']} - $position->{$conMon3['nextEmp']};
-                                        
-                                            if($lenght3 >= 1 && $lenght3 <= $maxPartDay)
-                                            {
-                                                $dateArr3 = dateCalc($day3, $month3, $year, $lenght3);
-                                            
-                                                $isCurOk = false;
-                                                $isNextOk = false;
-                                            
-                                                if($thisAvalibleDays - $dateArr3[0]['this'] >= 0)
-                                                {
-                                                    $isCurOk = true;
-                                                }
-                                                else
-                                                {
-                                                    echo '<div class="answ">Не хватает в этом месяце</div>';
-                                                    $isCurOk = false;
-                                                }
-                                                if($nextAvalibleDays - $dateArr3[0]['next'] >= 0)
-                                                {
-                                                    $isNextOk = true;
-                                                }
-                                                else
-                                                {
-                                                    echo '<div class="answ">Не хватает в след месяце</div>';
-                                                    $isNextOk = false;
-                                                }
-                                            
-                                                if($isCurOk && $isNextOk)
-                                                {   
-                                                
-                                                    if($lenght3 + $employee->lenght1 + $employee->lenght2 <= $maxday)
-                                                    {
-                                                        $mon3 = $dateArr3['start']->format('n'); //Месяц без ведущего нуля
-                                                    
-                                                        if($employee->lenght3 != 0)
-                                                        {
-                                                            minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
-                                                        }
-                                                    
-                                                        $employee->update([
-                                                            'mon3' => $mon3,
-                                                            'lenght3' => $lenght3,
-                                                            'day3' => $day3
-                                                            ]);
-                                                        
-                                                        plusLen($employee->position, $day3, $mon3, $year, $lenght3);
-                                                        
-                                                        echo "Данные успешно обновлены!";
-                                                        
-                                                        echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
-                                                        exit;
-                                                    }
-                                                
-                                                    else
-                                                    {
-                                                        echo '<div class="answ">Количество всех дней отпуска не должно привышать максимальное значение</div>';
-                                                    }
-                                                
-                                                }
-                                            }
-                                        
-                                            else
-                                            {
-                                                echo '<div class="answ">Запрещенная длина отпуска</div>';
-                                            }
-                                        
-                                        }
-                                    
-                                        else
-                                        {
-                                            echo '<div class="answ">Год не найден</div>';
-                                        }
-                                    }
-                                
-                                
-                                ?>
+                                <?php handlePartRequest($employee, 3); ?>
 
                             </div>
                                 
                             <script>
                                 //Подсчет доступных дней
-                                const positionData3 = JSON.parse('<?= json_encode($position->toArray()) ?>');
+                                const positionData3 = <?= json_encode($position->toArray(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
                                 
                                 document.getElementById('part3-month').addEventListener('change', function() {
                                     const month3 = this.value;
@@ -926,7 +622,7 @@
                                         
                                 <div class="form-group">
                                     <label for="comment" class="dopcom">Здесь вы можете оставить дополнитеьный комментарий (Не обязательно для заполнения)</label>
-                                        <input class="comment" name="comment" <?php echo $dis4 ?> placeholder="Например ребенок идет в 1 класс" value="<?php echo $employee->comment ?? ''; ?>">
+                                        <input class="comment" name="comment" <?php echo $dis4 ?> placeholder="Например ребенок идет в 1 класс" value="<?php echo esc($employee->comment ?? ''); ?>">
                                 </div>
                                         
                                 <div class="date-row">
@@ -948,10 +644,8 @@
                                         
                                 <?php
 
-                                    if($_POST['cancel4'])
+                                    if(!empty($_POST['cancel4']))
                                     {
-                                        minusLen($employee->position, $employee->day3, $employee->mon3, $year, $employee->lenght3);
-                                    
                                         $employee->update([
                                             'comment' => null
                                             ]);
@@ -959,7 +653,7 @@
                                         echo '<script>location.href="' . $_SERVER['PHP_SELF'] . '?id=' . $employee->id . '"</script>';
                                         exit;
                                     }
-                                    elseif($_POST['comment'])
+                                    elseif(!empty($_POST['comment']))
                                     {
                                         $com = $_POST['comment'];
 
