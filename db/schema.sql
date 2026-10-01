@@ -1,14 +1,10 @@
 -- =====================================================================
--- Схема БД проекта Vacation-Settings-WebSite (PostgreSQL 12+)
+-- Схема БД проекта (PostgreSQL 12+). Описание таблиц и миграций: docs/DATABASE.md.
+-- Применяется один раз при создании пустой БД (docker-entrypoint-initdb.d или psql -f).
 --
--- ВОССТАНОВЛЕНА ПО КОДУ приложения, а не выгружена из боевой БД.
--- Что здесь выведено из кода, а что предположение - см. README.md, раздел
--- "База данных". Если у вас есть pg_dump --schema-only боевой БД, сверьте
--- его с этим файлом.
---
--- ВАЖНО: Eloquent оборачивает имена колонок в двойные кавычки, поэтому
--- колонки в смешанном регистре ("janEmp", "isReady") ОБЯЗАТЕЛЬНО создаются
--- в кавычках - иначе запросы приложения не найдут их.
+-- ВАЖНО: Eloquent оборачивает имена колонок в двойные кавычки, поэтому колонки в
+-- смешанном регистре ("janEmp", "isReady") создаются в кавычках - иначе запросы
+-- приложения не найдут их.
 -- =====================================================================
 
 -- Должности: фиксированный список (ниже), новые должности добавлять нельзя.
@@ -112,6 +108,18 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 );
 CREATE INDEX IF NOT EXISTS login_attempts_user_ip_idx ON login_attempts (username, ip, at);
 CREATE INDEX IF NOT EXISTS login_attempts_ip_idx ON login_attempts (ip, at);
+
+-- Учёт применённых миграций (bin/migrate.php). Новая БД, созданная из этого файла, уже содержит все миграции.
+-- При добавлении db/migrations/NNN_*.sql добавьте его имя сюда.
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    filename   text PRIMARY KEY,
+    applied_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO schema_migrations (filename) VALUES
+    ('001_fixed_positions_admin_vacations.sql'),
+    ('002_unique_employees.sql'),
+    ('003_admin_security.sql')
+ON CONFLICT (filename) DO NOTHING;
 
 -- Обязательная строка параметров. ГОД - ПРЕДПОЛОЖЕНИЕ (следующий календарный):
 -- измените в админке (Настройки -> Год) или командой:

@@ -1,0 +1,21 @@
+# Обратный прокси с автоматическим HTTPS (сертификат Let's Encrypt получается и продлевается сам).
+# Домен и e-mail берутся из переменных окружения DOMAIN и ACME_EMAIL (файл .env на сервере).
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Приложение доступно только через этот прокси (порт приложения наружу не публикуется).
+	# Caddy сам передаёт X-Forwarded-Proto и X-Forwarded-For (с настоящим адресом клиента,
+	# заголовок от клиента перезаписывается) - на них опирается APP_TRUST_PROXY=1 в приложении.
+	reverse_proxy {$APP_UPSTREAM:app:80}
+
+	header -Server
+}
+
+# Если нужен адрес с www (для него должна быть DNS-запись), раскомментируйте:
+# www.{$DOMAIN} {
+# 	redir https://{$DOMAIN}{uri} permanent
+# }

@@ -32,13 +32,10 @@ function doConfirm($id)
     return 'short';
 }
 
-// Очистка БД: новая функция, если есть, иначе прежняя последовательность из clear.php
+// «Очистить БД» = полная пересборка БД
 function doClear()
 {
-    if (function_exists('clearAllData')) { clearAllData(); return; }
-    clearPositionsData();
-    clearPositionsEmpData();
-    deleteAllEmployees();
+    rebuildDatabase();
 }
 
 switch ($mode) {

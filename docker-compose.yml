@@ -42,7 +42,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-vacation}
       DB_CHARSET: utf8
       DB_SCHEMA: public
-      # Безопасность (см. README, раздел «Безопасность входа администратора»).
+      # Безопасность (см. docs/SECURITY.md).
       # Локально по умолчанию dev: работает демо-вход admin/admin по http.
       # НА ПРОДЕ ОБЯЗАТЕЛЬНО: APP_ENV=production (строгие правила: только HTTPS, сложный пароль).
       APP_ENV: ${APP_ENV:-dev}

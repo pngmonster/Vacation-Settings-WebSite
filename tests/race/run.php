@@ -1,6 +1,6 @@
 <?php
 /**
- * Стенд гонок данных: php tests/race/run.php [сценарии: dup slot clear confirm stress]
+ * Стенд гонок данных: php tests/race/run.php [сценарии: dup slot clear confirm stress upload rebuild]
  *
  * ВНИМАНИЕ: стенд УДАЛЯЕТ данные. Запускайте только на отдельной тестовой БД (имя содержит 'race' или 'test'):
  *   createdb vac_race && psql -d vac_race -f db/schema.sql
@@ -62,7 +62,7 @@ function addPeople($count, $position, $prefix)
     return $ids;
 }
 
-function report($title, $ok, $detail)
+function report($title, $ok, $detail = "")
 {
     global $failures;
     echo ($ok ? '  ✅ ' : '  ❌ ') . $title . ($detail ? " — $detail" : '') . "\n";
@@ -140,8 +140,8 @@ if ($want('confirm')) {
 
 // ---------------------------------------------------------------------------------------------
 if ($want('clear')) {
-    echo "\n[4] Очистка БД во время работы сотрудников: счётчики остаются согласованными?\n";
-    $iterations = 8; $bad = 0; $details = '';
+    echo "\n[4] Пересборка БД («Очистить БД») во время работы сотрудников: ошибок и рассогласований нет?\n";
+    $iterations = 8; $bad = 0; $details = ''; $clearErrors = 0; $clearSample = '';
     for ($it = 1; $it <= $iterations; $it++) {
         resetData(200);
         $curIds = addPeople(12, $POS, "Очистка{$it}_");
@@ -151,12 +151,15 @@ if ($want('clear')) {
         for ($k = 0; $k < 6; $k++) { $cmds[] = "$php $worker loop $t $k 1.2 " . implode(',', $curIds); }
         // очистка стартует в середине нагрузки
         $cmds[] = "$php $worker clear " . ($t + 0.5);
-        parallel($cmds);
+        $outs = parallel($cmds);
+        foreach ($outs as $o) { $j = json_decode(trim(strrchr("\n" . $o, "\n")), true); if ($j) { $clearErrors += $j['errors']; if (!$clearSample && $j['samples']) { $clearSample = $j['samples'][0]; } } }
+        if (strpos(implode(' ', $outs), 'cleared') === false) { $clearErrors++; }
         // после очистки новые записи могли появиться (сотрудники продолжали работать) - важно только согласование
         list($ok, $out) = consistency();
         if (!$ok) { $bad++; if (!$details) { $details = trim(preg_replace('/\s+/', ' ', substr($out, 0, 260))); } }
     }
-    report("счётчики совпадают с записями после очистки ($iterations попыток)", $bad === 0, $bad ? "рассогласование в $bad из $iterations: $details" : '');
+    report("счётчики совпадают с записями после пересборки ($iterations попыток)", $bad === 0, $bad ? "рассогласование в $bad из $iterations: $details" : '');
+    report('работающие сотрудники не получают ошибок во время пересборки', $clearErrors === 0, $clearErrors ? "исключений: $clearErrors, пример: $clearSample" : '');
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -199,6 +202,67 @@ if ($want('upload')) {
     }
     report("итог - ровно один целый список, без сбоев ($iterations попыток)", $bad === 0 && $crashed === 0,
            ($bad || $crashed) ? "смесь/неверное число строк: $bad, упавших загрузок: $crashed" : '');
+}
+
+// ---------------------------------------------------------------------------------------------
+if ($want('rebuild')) {
+    echo "\n[7] «Очистить БД» = пересборка: состояние как после установки, админ цел, при сбое ничего не теряется\n";
+    $q = function ($sql, $b = []) { return DB::connection()->selectOne($sql, $b); };
+
+    // грязное состояние: свои maxday/год/лимиты, сотрудники с отпусками, список, админ и журнал входов
+    resetData(30);
+    \Models\Position::where('position', 'Врач СМП')->update(['maxday' => 99]);
+    \Models\Params::where('id', 1)->update(['year' => 2031]);
+    $c = addPeople(5, $POS, 'Сборка');
+    foreach ($c as $cid) { $e = findOrCreateEmployee(\Models\Cur_emp::find($cid)); savePart($e->id, 1, 'jan', 2, 14, 2031); }
+    DB::connection()->statement("DELETE FROM users WHERE username = 'rebuild_test_admin'");
+    \Models\User::create(['username' => 'rebuild_test_admin', 'password' => password_hash('x', PASSWORD_DEFAULT), 'role' => 'admin']);
+    DB::connection()->statement("INSERT INTO login_attempts (username, ip, success) VALUES ('rebuild_test_admin', '1.2.3.4', true)");
+    $users0 = (int)$q('SELECT count(*) AS c FROM users')->c; $attempts0 = (int)$q('SELECT count(*) AS c FROM login_attempts')->c;
+    $migr0 = (int)$q('SELECT count(*) AS c FROM schema_migrations')->c;
+    $maxId = (int)$q('SELECT max(id) AS m FROM employees')->m;
+
+    // --- атомарность: битая схема и отсутствующий файл не должны ничего менять ---
+    $broken = sys_get_temp_dir() . '/broken_schema_' . getmypid() . '.sql'; file_put_contents($broken, "CREATE TABLE t_ok (id int);\nCREATE TABLE t_bad (;\n");
+    $thrown = false; try { rebuildDatabase($broken); } catch (\Throwable $e) { $thrown = true; } @unlink($broken);
+    $empl = (int)$q('SELECT count(*) AS c FROM employees')->c; $md = (int)$q("SELECT maxday AS m FROM positions WHERE position = 'Врач СМП'")->m;
+    report('сбой при пересборке (битая схема): исключение, а данные и настройки НЕ тронуты (откат)', $thrown && $empl === 5 && $md === 99 && (int)$q("SELECT count(*) AS c FROM information_schema.tables WHERE table_name = 't_ok'")->c === 0, "исключение=" . var_export($thrown, true) . " сотрудников=$empl maxday=$md");
+    $thrown2 = false; try { rebuildDatabase('/nonexistent/schema.sql'); } catch (\RuntimeException $e) { $thrown2 = true; }
+    report('отсутствует файл схемы: понятное исключение, данные целы', $thrown2 && (int)$q('SELECT count(*) AS c FROM employees')->c === 5);
+
+    // --- сама пересборка ---
+    rebuildDatabase();
+    report('сотрудников и отпусков нет', (int)$q('SELECT count(*) AS c FROM employees')->c === 0);
+    report('список сотрудников (cur_emp) пуст', (int)$q('SELECT count(*) AS c FROM cur_emp')->c === 0);
+    $newEmp = \Models\Employees::create(['fam' => 'новый', 'name' => 'после', 'otch' => 'сборки', 'position' => $POS]);
+    report("нумерация записей с единицы: первый сотрудник получил id=1 (раньше было до $maxId)", (int)$newEmp->id === 1, 'id=' . $newEmp->id);
+    $newCur = \Models\Cur_emp::create(['fio' => 'Новый Список Иванов', 'position' => $POS]);
+    report('нумерация списка сотрудников тоже с единицы', (int)$newCur->id === 1, 'id=' . $newCur->id);
+    report('должностей 18, maxday вернулся к значению по умолчанию (Врач СМП: 99 -> 42)', (int)$q('SELECT count(*) AS c FROM positions')->c === 18 && (int)$q("SELECT maxday AS m FROM positions WHERE position = 'Врач СМП'")->m === 42);
+    $nz = $q('SELECT count(*) AS c FROM positions WHERE jan+feb+mar+apr+may+jun+jul+aug+sep+oct+nov+dec <> 0 OR "janEmp"+"febEmp"+"marEmp"+"aprEmp"+"mayEmp"+"junEmp"+"julEmp"+"augEmp"+"sepEmp"+"octEmp"+"novEmp"+"decEmp" <> 0')->c;
+    report('лимиты по месяцам и счётчики занятых дней равны нулю у всех должностей', (int)$nz === 0);
+    $yr = (int)$q('SELECT year AS y FROM params WHERE id = 1')->y;
+    report("год отпусков вернулся к значению по умолчанию (следующий календарный): $yr", $yr === (int)date('Y') + 1 && (int)$q('SELECT count(*) AS c FROM params')->c === 1, "год=$yr");
+
+    // --- что должно сохраниться ---
+    report('учётная запись администратора сохранена (пользователей столько же, тестовый админ на месте)', (int)$q('SELECT count(*) AS c FROM users')->c === $users0 && (int)$q("SELECT count(*) AS c FROM users WHERE username = 'rebuild_test_admin'")->c === 1);
+    report('журнал попыток входа и учёт миграций сохранены', (int)$q('SELECT count(*) AS c FROM login_attempts')->c === $attempts0 && (int)$q('SELECT count(*) AS c FROM schema_migrations')->c === $migr0);
+
+    // --- структура как у свежей установки ---
+    $idx = array_column(DB::connection()->select("SELECT indexname FROM pg_indexes WHERE tablename IN ('employees','cur_emp')"), 'indexname');
+    report('уникальные индексы на месте (employees_person_uniq и уникальность cur_emp)', in_array('employees_person_uniq', $idx, true) && in_array('cur_emp_fio_position_key', $idx, true), implode(',', $idx));
+    \Models\Employees::where('id', 1)->delete(); \Models\Cur_emp::where('id', 1)->delete();
+    list($okC, $outC) = consistency();
+    report('проверка целостности после пересборки', $okC, $okC ? '' : substr($outC, 0, 200));
+
+    // --- повторная пересборка и работа приложения после неё ---
+    rebuildDatabase(); rebuildDatabase();
+    $cur2 = \Models\Cur_emp::create(['fio' => 'После Двух Пересборок', 'position' => $POS]);
+    $emp2 = findOrCreateEmployee($cur2);
+    \Models\Position::where('position', $POS)->update(['jan' => 100]);
+    report('после повторных пересборок приложение работает: выбор отпуска проходит', savePart($emp2->id, 1, 'jan', 2, 14, (int)\Models\Params::find(1)->year)['ok'] && (int)$emp2->id === 1);
+    DB::connection()->statement("DELETE FROM users WHERE username = 'rebuild_test_admin'");
+    DB::connection()->statement("DELETE FROM login_attempts WHERE username = 'rebuild_test_admin'");
 }
 
 echo "\n" . ($failures ? "ИТОГО: проблем найдено: $failures\n" : "ИТОГО: все проверки гонок пройдены\n");

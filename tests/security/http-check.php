@@ -5,6 +5,7 @@
  *   php tests/security/http-check.php --base=https://vacation.example.org --user=boss --pass='...' [--bruteforce]
  *   docker compose exec app php tests/security/http-check.php --base=http://localhost --user=admin --pass=admin
  *
+ * --insecure         не проверять сертификат (для самоподписанного/тестового HTTPS)
  * --proxy-https      добавлять X-Forwarded-Proto: https (тест за прокси без реального TLS, нужен APP_TRUST_PROXY=1)
  * --expect-production убедиться, что сайт НЕ в режиме разработки (нет красного баннера «РЕЖИМ РАЗРАБОТКИ»)
  * --check-demo       убедиться, что демо-вход admin/admin НЕ работает (обязательно перед запуском на проде)
@@ -22,6 +23,7 @@ foreach (array_slice($argv, 1) as $a) {
 $base = rtrim($opt['base'] ?? 'http://127.0.0.1:8081', '/');
 $user = $opt['user'] ?? 'admin'; $pass = $opt['pass'] ?? '';
 $proxyHttps = !empty($opt['proxy-https']);
+$insecure = !empty($opt['insecure']);
 $ok = 0; $fail = 0;
 
 function t($name, $cond, $extra = '') {
@@ -34,12 +36,13 @@ class Browser {
     public $jar; public $extraHeaders = [];
     function __construct() { $this->jar = tempnam(sys_get_temp_dir(), 'jar'); }
     function req($method, $path, $data = null, $headers = []) {
-        global $base, $proxyHttps;
+        global $base, $proxyHttps, $insecure;
         $ch = curl_init(strpos($path, 'http') === 0 ? $path : $base . '/' . ltrim($path, '/'));
         $h = array_merge($this->extraHeaders, $headers);
         if ($proxyHttps) { $h[] = 'X-Forwarded-Proto: https'; }
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_HEADER => true, CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_COOKIEJAR => $this->jar, CURLOPT_COOKIEFILE => $this->jar, CURLOPT_HTTPHEADER => $h, CURLOPT_TIMEOUT => 20]);
+            CURLOPT_COOKIEJAR => $this->jar, CURLOPT_COOKIEFILE => $this->jar, CURLOPT_HTTPHEADER => $h, CURLOPT_TIMEOUT => 20,
+            CURLOPT_SSL_VERIFYPEER => !$insecure, CURLOPT_SSL_VERIFYHOST => $insecure ? 0 : 2]);
         if ($method === 'POST') { curl_setopt($ch, CURLOPT_POST, true); curl_setopt($ch, CURLOPT_POSTFIELDS, is_array($data) ? http_build_query($data) : $data); }
         $raw = curl_exec($ch); $size = curl_getinfo($ch, CURLINFO_HEADER_SIZE); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
         $head = substr($raw, 0, $size); $body = substr($raw, $size);

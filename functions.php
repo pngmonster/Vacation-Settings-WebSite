@@ -9,77 +9,25 @@ function esc($value)
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
 
-//Обнуление всех дней отпуска для всех должностей
-function clearPositionsData() {
-
-    // Получаем объект со всеми записями из таблицы
-    $positions = \Models\Position::all();
-
-    if ($positions->isNotEmpty())
-    {
-
-        // Обновляем все записи
-        \Models\Position::query()->update([
-            'jan' => '0',
-            'feb' => '0',
-            'mar' => '0',
-            'apr' => '0',
-            'may' => '0',
-            'jun' => '0',
-            'jul' => '0',
-            'aug' => '0',
-            'sep' => '0',
-            'oct' => '0',
-            'nov' => '0',
-            'dec' => '0'
-        ]);
-    }
-}
-
-function clearPositionsEmpData() {
-
-    // Получаем объект со всеми записями из таблицы
-    $positions = \Models\Position::all();
-
-    if ($positions->isNotEmpty())
-    {
-
-        // Обновляем все записи
-        \Models\Position::query()->update([
-            'janEmp' => '0',
-            'febEmp' => '0',
-            'marEmp' => '0',
-            'aprEmp' => '0',
-            'mayEmp' => '0',
-            'junEmp' => '0',
-            'julEmp' => '0',
-            'augEmp' => '0',
-            'sepEmp' => '0',
-            'octEmp' => '0',
-            'novEmp' => '0',
-            'decEmp' => '0'
-        ]);
-    }
-}
-
-function deleteAllEmployees() {
-    // DELETE, а не TRUNCATE: TRUNCATE в PostgreSQL через Laravel сбрасывает нумерацию id, и старые
-    // открытые страницы (user.php?id=N) стали бы указывать на ДРУГИХ сотрудников
-    \Models\Employees::query()->delete();
-}
-
-//Полная очистка («Очистить БД») одной транзакцией. Запись в employees блокируется на время очистки
-//(порядок блокировок тот же, что в остальном коде: сначала employees, затем positions), поэтому
-//работающие в этот момент сотрудники не испортят счётчики: их запросы либо завершатся до очистки,
-//либо увидят пустую БД.
-function clearAllData()
+//Полная пересборка БД («Очистить БД»): таблицы данных (employees, cur_emp, positions, params) удаляются и создаются
+//заново из db/schema.sql - ровно как при первой установке: нумерация id с единицы, список должностей с maxday по умолчанию,
+//лимиты и счётчики нулевые, год по умолчанию, список сотрудников пуст.
+//НЕ затрагиваются: users (учётная запись администратора), login_attempts, schema_migrations.
+//Всё выполняется в одной транзакции (DDL в PostgreSQL транзакционный): при любой ошибке данные остаются как были.
+//DROP TABLE дожидается завершения запросов работающих сотрудников и блокирует новые до конца пересборки.
+//Порядок блокировок тот же, что везде: сначала employees. $schemaFile - только для тестов.
+function rebuildDatabase($schemaFile = null)
 {
+    $schemaFile = $schemaFile ?: __DIR__ . '/db/schema.sql';
+    $sql = is_readable($schemaFile) ? file_get_contents($schemaFile) : false;
+    if ($sql === false || trim($sql) === '') {
+        throw new \RuntimeException('Не найден файл схемы: ' . $schemaFile);
+    }
+
     $conn = \Illuminate\Database\Capsule\Manager::connection();
-    $conn->transaction(function () use ($conn) {
-        $conn->statement('LOCK TABLE employees IN EXCLUSIVE MODE');
-        deleteAllEmployees();
-        clearPositionsData();
-        clearPositionsEmpData();
+    $conn->transaction(function () use ($conn, $sql) {
+        $conn->statement('DROP TABLE IF EXISTS employees, cur_emp, positions, params CASCADE');
+        $conn->getPdo()->exec($sql); // схема + фиксированный список должностей + строка параметров
     }, 3);
 }
 

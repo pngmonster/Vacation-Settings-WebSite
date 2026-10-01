@@ -143,6 +143,5 @@
 
 </body>
 
-<?php //clearPositionsData(); ?>
 
 </html>

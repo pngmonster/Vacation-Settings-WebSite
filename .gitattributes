@@ -1,0 +1,5 @@
+# Файлы, которые выполняются на Linux-сервере, всегда с переводами строк LF (даже если правили в Windows)
+*.sh        text eol=lf
+Caddyfile   text eol=lf
+*.sql       text eol=lf
+Dockerfile  text eol=lf
