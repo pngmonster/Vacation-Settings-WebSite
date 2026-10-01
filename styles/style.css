@@ -976,6 +976,13 @@ div.success-message {
     background: transparent;
 }
 
+/* подсветку при фокусе даёт сама капсула (.search-form:focus-within); у поля внутри своей не нужно */
+.search-form .combo-input:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: transparent;
+}
+
 .search-form .combo-list {
     top: calc(100% + 6px);
 }
@@ -1003,4 +1010,66 @@ div.success-message {
 /* Контейнер со списком подсказок не должен обрезать выпадающий список (overflow: hidden) */
 .vacation-container.has-combo {
     overflow: visible;
+}
+
+/* ------- */
+/* Действия в шапке карточки отчёта: редактировать отпуск / удалить */
+/* ------- */
+
+/* Шапка карточки: сетка «ФИО | редактировать | удалить». Кнопки - прямые элементы сетки (без вложенных контейнеров). */
+.card-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    column-gap: 2px;
+    align-items: start;
+}
+
+.card-head .employee-name {
+    min-width: 0;
+    margin-right: 6px;
+    word-break: break-word;
+}
+
+.card-head .delete-btn,
+.card-head .edit-btn {
+    display: grid;
+    place-items: center;
+    min-width: 40px;
+    min-height: 40px; /* удобная область нажатия на телефоне */
+}
+
+.edit-btn {
+    display: grid;
+    place-items: center;
+    min-width: 40px;
+    min-height: 40px; /* удобная область нажатия на телефоне */
+}
+
+.edit-btn {
+    color: var(--primary-color);
+    font-size: 1.15rem;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.edit-btn:hover {
+    color: var(--secondary-color);
+    background: rgba(67, 97, 238, 0.1);
+    transform: scale(1.1);
+}
+
+.edit-btn:active {
+    transform: scale(0.95);
+}
+
+.edit-btn.disabled {
+    color: #adb5bd;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.edit-btn.disabled:hover {
+    background: none;
+    transform: none;
 }

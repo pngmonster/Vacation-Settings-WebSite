@@ -38,6 +38,7 @@
         $positions = \Models\Position::orderBy('position', 'asc')->get(['position'])->toArray(); //Получаем все должности из БД
         $maxdays = \Models\Position::pluck('maxday', 'position')->all();
         $sets = controlSets(); // «Не приступили» и «Заполнили не до конца»
+        $curMap = curIdMap();  // для иконки «Редактировать отпуск» (переход в assign.php)
     ?>
 
     <nav class="navbar">
@@ -107,7 +108,7 @@
                 if ($record) {
                     $employees = [$record];
                 } else { // в списке есть, но записи отпуска ещё нет
-                    $notStartedShown = [['fio' => $personCur->fio, 'position' => $personCur->position, 'employee' => null]];
+                    $notStartedShown = [['id' => (int)$personCur->id, 'fio' => $personCur->fio, 'position' => $personCur->position, 'employee' => null]];
                 }
             }
         }
@@ -210,7 +211,16 @@
             
             <?php foreach ($notStartedShown ?? [] as $item): ?>
                 <li class="employee-card incomplete">
-                    <div class="employee-name"><?= esc($item['fio']) ?></div>
+                    <div class="card-head">
+                        <div class="employee-name"><?= esc($item['fio']) ?></div>
+                                                <?php if (!empty($item['id'])): ?>
+                            <a class="edit-btn" href="assign.php?cur=<?= (int)$item['id'] ?>" title="Ввести отпуск"
+                               aria-label="Ввести отпуск: <?= esc($item['fio']) ?>"><i class="fas fa-pen-to-square"></i></a>
+                        <?php else: ?>
+                            <span class="edit-btn disabled" title="Сотрудника нет в загруженном списке — редактирование недоступно"
+                                  aria-disabled="true"><i class="fas fa-pen-to-square"></i></span>
+                        <?php endif; ?>
+                    </div>
                     <div class="employee-position"><?= esc($item['position']) ?></div>
                     <div class="status-line incomplete">
                         <i class="fas fa-hourglass-start"></i>
@@ -225,9 +235,17 @@
             <?php foreach ($employees ?? [] as $employee): ?>
                 <?php $st = vacationStatus($employee, $maxdays[$employee->position] ?? 0); ?>
                 <li class="employee-card<?= $st['complete'] ? ' complete' : ' incomplete' ?>" id="employee-<?= $employee->id ?>">
-                    <div class="between">
+                    <?php $editId = curIdForEmployee($employee, $curMap); ?>
+                    <div class="card-head">
                         <div class="employee-name"><?php echo esc(displayFio($employee))?></div>
-                        <button class="delete-btn" onclick="confirmDelete(<?= (int)$employee->id ?>, <?= esc(json_encode(upfl($employee->name) . ' ' . upfl($employee->otch), JSON_UNESCAPED_UNICODE)) ?>)">
+                                                <?php if ($editId): ?>
+                            <a class="edit-btn" href="assign.php?cur=<?= (int)$editId ?>" title="Редактировать отпуск"
+                               aria-label="Редактировать отпуск: <?= esc(displayFio($employee)) ?>"><i class="fas fa-pen-to-square"></i></a>
+                        <?php else: ?>
+                            <span class="edit-btn disabled" title="Сотрудника нет в загруженном списке — редактирование недоступно"
+                                  aria-disabled="true"><i class="fas fa-pen-to-square"></i></span>
+                        <?php endif; ?>
+                        <button class="delete-btn" title="Удалить сотрудника" aria-label="Удалить сотрудника" onclick="confirmDelete(<?= (int)$employee->id ?>, <?= esc(json_encode(upfl($employee->name) . ' ' . upfl($employee->otch), JSON_UNESCAPED_UNICODE)) ?>)">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>

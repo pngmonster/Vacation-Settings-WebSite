@@ -888,13 +888,13 @@ function controlSets()
             $matched[$e->id] = true;
         }
         if (!$e || chosenDays($e) === 0) {
-            $notStarted[] = ['fio' => $c->fio, 'position' => $c->position, 'employee' => $e];
+            $notStarted[] = ['id' => (int)$c->id, 'fio' => $c->fio, 'position' => $c->position, 'employee' => $e];
         }
     }
     // Старые записи без пустых частей, которых нет в загруженном списке
     foreach ($employees as $e) {
         if (!isset($matched[$e->id]) && chosenDays($e) === 0) {
-            $notStarted[] = ['fio' => displayFio($e), 'position' => $e->position, 'employee' => $e];
+            $notStarted[] = ['id' => null, 'fio' => displayFio($e), 'position' => $e->position, 'employee' => $e];
         }
     }
 
@@ -956,5 +956,24 @@ function confirmEmployee($id)
         }
         return 'ok';
     }, 3);
+}
+
+//Соответствие «запись отпуска сотрудника» -> id в списке сотрудников (cur_emp):
+//нужно для перехода из отчёта в окно «Ввод отпуска» (assign.php?cur=ID).
+//Ключ тот же, что в findEmployeeForCur / controlSets: ФИО по словам + должность.
+function curIdMap()
+{
+    $map = [];
+    foreach (\Models\Cur_emp::get(['id', 'fio', 'position']) as $c) {
+        list($fam, $name, $otch) = splitFio($c->fio);
+        $map[$fam . '|' . $name . '|' . $otch . '|' . $c->position] = (int)$c->id;
+    }
+    return $map;
+}
+
+//id сотрудника в списке (cur_emp) или null, если его там нет (например, список загрузили заново без него)
+function curIdForEmployee($employee, array $map)
+{
+    return $map[$employee->fam . '|' . $employee->name . '|' . $employee->otch . '|' . $employee->position] ?? null;
 }
 ?>

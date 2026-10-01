@@ -323,6 +323,21 @@ check('confirmEmployee: повторно -> ok (идемпотентно)', conf
 check('confirmEmployee: несуществующий -> notfound', confirmEmployee(999999999) === 'notfound');
 check('findOrCreateEmployee: повторный вызов возвращает ту же запись', findOrCreateEmployee($cq)->id === $eq->id && \Models\Employees::where('fam', 'подтвердов')->count() === 1);
 
+// ---------- Переход из отчёта в «Ввод отпуска» ----------
+echo "Ссылка «Редактировать» в отчёте:\n";
+$m1 = \Models\Cur_emp::create(['fio' => 'Ссылкин Иван Иванович Оглы', 'position' => $pos]);
+$m2 = \Models\Cur_emp::create(['fio' => 'Ссылкин Иван Иванович Оглы', 'position' => 'Санитар']);   // тёзка, другая должность
+$me1 = findOrCreateEmployee($m1); $me2 = findOrCreateEmployee($m2);
+$map = curIdMap();
+check('4 слова ФИО: запись отпуска сопоставляется с записью списка', curIdForEmployee($me1, $map) === (int)$m1->id);
+check('тёзки с разными должностями получают РАЗНЫЕ id', curIdForEmployee($me2, $map) === (int)$m2->id && $m1->id !== $m2->id);
+$orphan = \Models\Employees::create(['fam' => 'сирота', 'name' => 'без', 'otch' => 'списка', 'position' => $pos]);
+check('запись, которой нет в списке, -> null (иконка будет неактивной)', curIdForEmployee($orphan, $map) === null);
+check('controlSets: у не приступивших из списка есть id для ссылки', (function () use ($m1, $pos) {
+    foreach (controlSets()['notStarted'] as $r) { if ($r['fio'] === 'Ссылкин Иван Иванович Оглы' && $r['position'] === $pos) { return (int)$r['id'] === (int)$m1->id; } }
+    return false;
+})());
+
 DB::connection()->rollBack();
 
 echo "\n" . ($failed ? "ПРОВАЛЕНО: $failed из $total\n" : "Все проверки пройдены ($total)\n");
