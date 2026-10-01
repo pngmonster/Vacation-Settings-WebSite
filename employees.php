@@ -87,6 +87,7 @@
         <?php endif; ?>
 
         <form method="POST" enctype="multipart/form-data" onsubmit="return confirm('Текущий список сотрудников будет полностью заменён. Продолжить?');">
+            <?= csrfField() ?>
             <div class="form-group">
                 <input type="file" name="list" accept=".xlsx,.xls" required class="file-input">
             </div>

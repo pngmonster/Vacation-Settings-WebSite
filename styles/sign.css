@@ -176,3 +176,22 @@ select {
         font-size: 1.3rem;
     }
 }
+/* Предупреждение: сайт запущен в режиме разработки (ослабленная защита) */
+.dev-banner {
+    background: #dc3545;
+    color: #fff;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    margin: 0 0 12px;
+}
+
+body > .dev-banner {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    z-index: 10;
+}

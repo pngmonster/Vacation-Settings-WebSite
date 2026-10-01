@@ -22,9 +22,15 @@ if (!$username || !$password) {
     fwrite(STDERR, "Использование: php bin/create-admin.php <логин> <пароль>\n");
     exit(1);
 }
-if (mb_strlen($password) < 8) {
-    fwrite(STDERR, "Пароль должен быть не короче 8 символов.\n");
-    exit(1);
+// Политика паролей: не короче 12 символов, не логин, не распространённое слово.
+// В APP_ENV=dev (локальные тесты) слабый пароль только предупреждает.
+$reason = weakPasswordReason($password, $username);
+if ($reason) {
+    if (isProduction()) {
+        fwrite(STDERR, "Слабый пароль ({$reason}). Нужен пароль от 12 символов, не логин и не распространённое слово.\n");
+        exit(1);
+    }
+    fwrite(STDERR, "Предупреждение: слабый пароль ({$reason}) - допустимо только при APP_ENV=dev.\n");
 }
 
 $hash = password_hash($password, PASSWORD_DEFAULT);

@@ -338,6 +338,29 @@ check('controlSets: у не приступивших из списка есть 
     return false;
 })());
 
+// ---------- Безопасность входа: политика паролей ----------
+echo "Пароли:\n";
+check('пароль «admin» слабый', weakPasswordReason('admin') !== null);
+check('пароль «password1234» (12, распространённое слово) слабый', weakPasswordReason('password1234') !== null);
+check('пароль «Qwerty123456» слабый', weakPasswordReason('Qwerty123456') !== null);
+check('пароль «aaaaaaaaaaaaaaaa» слабый (мало разных символов)', weakPasswordReason('aaaaaaaaaaaaaaaa') !== null);
+check('пароль, содержащий логин, слабый', weakPasswordReason('boss-Kx9#mQ2vLp', 'boss') !== null);
+check('пароль короче 12 слабый', weakPasswordReason('Kx9#mQ2vLp') !== null);
+check('длинный случайный пароль принимается', weakPasswordReason('Kx9#mQ2vLp-tr7Z!') === null);
+check('фраза из слов принимается', weakPasswordReason('синий-трактор-плывёт-2027') === null);
+
+// ---------- Приоритет окружения над .env ----------
+echo "Настройки окружения:\n";
+$tmp = sys_get_temp_dir() . '/envprio_' . getmypid();
+@mkdir($tmp); file_put_contents("$tmp/.env", "APP_ENV=dev\nTEST_ONLY_VALUE=from-dotenv\n");
+$code = '$_ENV = []; require "' . __DIR__ . '/../vendor/autoload.php"; require "' . __DIR__ . '/../security.php";'
+      . '(Dotenv\Dotenv::createImmutable("' . $tmp . '"))->safeLoad(); echo envValue("APP_ENV"), "|", envValue("TEST_ONLY_VALUE"), "|", var_export(isProduction(), true);';
+$out = shell_exec('APP_ENV=production ' . escapeshellarg(PHP_BINARY) . ' -d variables_order=GPCS -r ' . escapeshellarg($code));
+check('реальное APP_ENV=production сильнее .env с APP_ENV=dev (веб-режим, $_ENV пуст)', $out === 'production|from-dotenv|true', (string)$out);
+$out2 = shell_exec(escapeshellarg(PHP_BINARY) . ' -d variables_order=GPCS -r ' . escapeshellarg($code));
+check('без реального APP_ENV значение берётся из .env (dev)', strpos((string)$out2, 'dev|') === 0, (string)$out2);
+@unlink("$tmp/.env"); @rmdir($tmp);
+
 DB::connection()->rollBack();
 
 echo "\n" . ($failed ? "ПРОВАЛЕНО: $failed из $total\n" : "Все проверки пройдены ($total)\n");

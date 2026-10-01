@@ -73,6 +73,7 @@
 
     <div class="admin-container">
         <form method="POST">
+            <?= csrfField() ?>
             <h1>Настройка дней отпуска</h1>
             
             <div class="year-card">

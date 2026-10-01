@@ -75,6 +75,7 @@
         <?php foreach ($errors as $error): ?><div class="error-message"><?= esc($error) ?></div><?php endforeach; ?>
 
         <form method="POST">
+            <?= csrfField() ?>
             <div class="table-wrap">
                 <table class="data-table">
                     <thead>

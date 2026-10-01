@@ -1,3 +1,6 @@
+<?php if (!isProduction()): ?>
+        <div class="dev-banner"><i class="fas fa-triangle-exclamation"></i> РЕЖИМ РАЗРАБОТКИ (APP_ENV=dev): защита ослаблена, на боевом сервере так быть не должно</div>
+<?php endif; ?>
 <?php
 // Общее меню администратора. Перед подключением задайте $adminActive:
 // settings | positions | employees | assign | report | clear
@@ -17,4 +20,11 @@ $adminLinks = [
                     <i class="fas <?= $icon ?>"></i> <?= $title ?>
                 </a>
             <?php endforeach; ?>
+        </div>
+        <div class="nav-user">
+            <span><i class="fas fa-user"></i> <?= htmlspecialchars($_SESSION['username'] ?? '', ENT_QUOTES, 'UTF-8') ?></span>
+            <form method="POST" action="logout.php">
+                <?= csrfField() ?>
+                <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Выйти</button>
+            </form>
         </div>

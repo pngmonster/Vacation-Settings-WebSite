@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/security.php';
+sendSecurityHeaders(); // X-Frame-Options, CSP frame-ancestors, nosniff, HSTS (по HTTPS) и др.
 require "vendor/autoload.php";
 
 foreach (glob(__DIR__."/models/*.php") as $fileName)
@@ -15,9 +17,8 @@ $dotenv->safeLoad(); // .env необязателен: в Docker перемен�
 
 // Значение из .env / переменных окружения
 $env = function ($key, $default = null) {
-    if (isset($_ENV[$key])) return $_ENV[$key];
-    $v = getenv($key);
-    return $v !== false ? $v : $default;
+    // реальное окружение процесса приоритетнее файла .env (см. envValue в security.php)
+    return envValue($key, $default);
 };
 
 // Теперь можно юзать переменные окружения

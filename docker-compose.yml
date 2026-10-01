@@ -42,6 +42,13 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-vacation}
       DB_CHARSET: utf8
       DB_SCHEMA: public
+      # Безопасность (см. README, раздел «Безопасность входа администратора»).
+      # Локально по умолчанию dev: работает демо-вход admin/admin по http.
+      # НА ПРОДЕ ОБЯЗАТЕЛЬНО: APP_ENV=production (строгие правила: только HTTPS, сложный пароль).
+      APP_ENV: ${APP_ENV:-dev}
+      APP_TRUST_PROXY: ${APP_TRUST_PROXY:-}
+      ADMIN_IDLE_MINUTES: ${ADMIN_IDLE_MINUTES:-30}
+      ADMIN_SESSION_HOURS: ${ADMIN_SESSION_HOURS:-8}
     ports:
       - "${APP_PORT:-8080}:80"
 

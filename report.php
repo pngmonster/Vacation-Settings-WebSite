@@ -430,6 +430,12 @@
                     input.value = id;
                     form.appendChild(input);
 
+                    const token = document.createElement('input'); // защита от подделки запроса (CSRF)
+                    token.type = 'hidden';
+                    token.name = 'csrf_token';
+                    token.value = <?= json_encode(csrfToken()) ?>;
+                    form.appendChild(token);
+
                     document.body.appendChild(form);
                     form.submit();
                 }
@@ -443,6 +449,7 @@
             </button>
 
             <form action="downloadExcel.php" method="post">
+            <?= csrfField() ?>
             <input type="hidden" name="filter" value="current">
             <button type="submit" class="save-btn">
                 <i class="fas fa-file-excel"></i> Сохранить в Excel 

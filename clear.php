@@ -48,6 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <form method="POST">
+            <?= csrfField() ?>
             <p class="confirm-text">Для подтверждения удаления всех данных введите слово <strong>Удалить</strong>:</p>
             <input type="text" name="confirm" class="confirm-input">
 

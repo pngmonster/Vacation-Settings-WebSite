@@ -102,6 +102,17 @@ CREATE TABLE IF NOT EXISTS users (
     role     text NOT NULL
 );
 
+-- Журнал попыток входа админа: защита от перебора пароля (см. security.php) и след «кто и когда входил».
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id       bigserial PRIMARY KEY,
+    username text        NOT NULL,
+    ip       text        NOT NULL,
+    success  boolean     NOT NULL,
+    at       timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS login_attempts_user_ip_idx ON login_attempts (username, ip, at);
+CREATE INDEX IF NOT EXISTS login_attempts_ip_idx ON login_attempts (ip, at);
+
 -- Обязательная строка параметров. ГОД - ПРЕДПОЛОЖЕНИЕ (следующий календарный):
 -- измените в админке (Настройки -> Год) или командой:
 --   UPDATE params SET year = 2027 WHERE id = 1;

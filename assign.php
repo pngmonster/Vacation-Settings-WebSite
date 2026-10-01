@@ -149,6 +149,7 @@
                         <?php if ($rangeText): ?><div class="assign-range"><?= esc($rangeText) ?></div><?php endif; ?>
 
                         <form method="POST" action="assign.php?cur=<?= (int)$curId ?>">
+                            <?= csrfField() ?>
                             <input type="hidden" name="part" value="<?= $n ?>">
                             <label class="field-label">Начало</label>
                             <input class="days-input" type="date" name="start" required
